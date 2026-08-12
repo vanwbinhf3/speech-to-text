@@ -82,6 +82,38 @@ describe("BenchmarkController", () => {
     expect(controller.getSnapshot().inputPeakVolume).toBe(0);
   });
 
+  it("auto-stops after speech is followed by enough silence", async () => {
+    const fakes = createFakes();
+    const controller = new BenchmarkController(fakes.dependencies);
+
+    await controller.initializeModels();
+    await controller.start();
+    fakes.emitAudioInput(Float32Array.from([0.25, -0.25]));
+    fakes.advanceTime(1_100);
+    fakes.emitAudioInput(Float32Array.from([0.001, -0.001]));
+
+    await vi.waitFor(() => expect(fakes.audioSession.stopCalls).toBe(1));
+    expect(fakes.whisperTranscribeCalls).toHaveLength(1);
+    expect(controller.getSnapshot().diagnosticLogs.map((entry) => entry.message)).toContain(
+      "Silence detected; stopping recording",
+    );
+  });
+
+  it("does not auto-stop on silence before speech is detected", async () => {
+    const fakes = createFakes();
+    const controller = new BenchmarkController(fakes.dependencies);
+
+    await controller.initializeModels();
+    await controller.start();
+    fakes.advanceTime(2_000);
+    fakes.emitAudioInput(Float32Array.from([0.001, -0.001]));
+
+    await Promise.resolve();
+
+    expect(fakes.audioSession.stopCalls).toBe(0);
+    expect(fakes.whisperTranscribeCalls).toHaveLength(0);
+  });
+
   it("passes the selected audio processing config into microphone capture", async () => {
     const fakes = createFakes();
     const controller = new BenchmarkController(fakes.dependencies);
@@ -199,6 +231,8 @@ function createFakes() {
     | null = null;
   let whisperReject: ((error: Error) => void) | null = null;
   let nowValue = 1_000;
+  let timeoutId = 0;
+  const timeoutCallbacks = new Map<number, () => void>();
 
   const audioSession = new FakeAudioSession();
   const whisperTranscribeCalls: Float32Array[] = [];
@@ -208,10 +242,13 @@ function createFakes() {
       return nowValue;
     },
     setTimeout: (callback: () => void) => {
-      const id = globalThis.setTimeout(callback, 0);
-      return id;
+      timeoutId += 1;
+      timeoutCallbacks.set(timeoutId, callback);
+      return timeoutId;
     },
-    clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
+    clearTimeout: (id: ReturnType<typeof setTimeout>) => {
+      timeoutCallbacks.delete(Number(id));
+    },
     audioCapture: {
       start: vi.fn(async (callbacks?: AudioCaptureCallbacks) => {
         audioSession.setCallbacks(callbacks);
@@ -240,6 +277,12 @@ function createFakes() {
     dependencies,
     audioSession,
     whisperTranscribeCalls,
+    advanceTime(ms: number) {
+      nowValue += ms;
+    },
+    triggerTimeout(id = timeoutId) {
+      timeoutCallbacks.get(id)?.();
+    },
     emitAudioInput(chunk = Float32Array.from([0.1, 0.2])) {
       audioSession.emitInput(chunk);
     },

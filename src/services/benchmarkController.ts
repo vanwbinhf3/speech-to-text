@@ -6,6 +6,7 @@ import {
 import {
   audioCaptureService,
   DEFAULT_AUDIO_PROCESSING_CONFIG,
+  type AudioInputLevel,
   type AudioProcessingConfig,
   type AudioCaptureService,
   type AudioCaptureSession,
@@ -39,6 +40,11 @@ type RunStatus =
 
 type ModelStatus = "idle" | "loading" | "ready" | "error";
 type DiagnosticLogLevel = "info" | "warn" | "error";
+
+const VAD_RMS_SPEECH_THRESHOLD = 0.035;
+const VAD_PEAK_SPEECH_THRESHOLD = 0.12;
+const VAD_SILENCE_DURATION_MS = 1_000;
+const VAD_MIN_RECORDING_MS = 600;
 
 export interface DiagnosticLogEntry {
   id: string;
@@ -112,6 +118,9 @@ export class BenchmarkController {
   private audioSession: AudioCaptureSession | null = null;
   private moonshineSession: MoonshineStreamSession | null = null;
   private moonshineAudioReceivedAt: number | null = null;
+  private vadSpeechDetected = false;
+  private vadLastSpeechAt: number | null = null;
+  private vadStopRequested = false;
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -192,6 +201,7 @@ export class BenchmarkController {
     const startedAt = this.dependencies.now();
     this.activeRunId = runId;
     this.moonshineAudioReceivedAt = null;
+    this.resetVadState();
     this.addLog("info", `Starting benchmark run ${runId}`);
     this.patch({
       status: "recording",
@@ -223,6 +233,7 @@ export class BenchmarkController {
         onInputLevel: (level) => {
           if (this.activeRunId === runId) {
             this.patch({ inputVolume: level.rms, inputPeakVolume: level.peak });
+            this.handleVadLevel(runId, level);
           }
         },
         onError: (error) => {
@@ -241,6 +252,7 @@ export class BenchmarkController {
       this.audioSession = null;
       this.activeRunId = null;
       this.moonshineAudioReceivedAt = null;
+      this.resetVadState();
       this.updateCurrentRun({ error: errorMessage(error), status: "error" });
       this.patch({ status: "error" });
       this.addLog("error", `Failed to start benchmark: ${errorMessage(error)}`);
@@ -266,6 +278,7 @@ export class BenchmarkController {
   async reset(): Promise<void> {
     this.activeRunId = null;
     this.moonshineAudioReceivedAt = null;
+    this.resetVadState();
     if (this.timeoutId) this.dependencies.clearTimeout(this.timeoutId);
     this.timeoutId = null;
     await this.audioSession?.stop().catch(() => undefined);
@@ -429,6 +442,7 @@ export class BenchmarkController {
     const history = addBenchmarkHistoryItem(this.snapshot.history, completed);
     this.activeRunId = null;
     this.moonshineAudioReceivedAt = null;
+    this.resetVadState();
     this.patch({
       status: "complete",
       currentRun: { ...run, status: "complete" },
@@ -445,6 +459,44 @@ export class BenchmarkController {
         ...patch,
       },
     });
+  }
+
+  private handleVadLevel(runId: string, level: AudioInputLevel): void {
+    if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
+    if (this.snapshot.status !== "recording" || this.vadStopRequested) return;
+
+    const now = this.dependencies.now();
+    const isSpeech =
+      level.rms >= VAD_RMS_SPEECH_THRESHOLD ||
+      level.peak >= VAD_PEAK_SPEECH_THRESHOLD;
+
+    if (isSpeech) {
+      this.vadLastSpeechAt = now;
+      if (!this.vadSpeechDetected) {
+        this.vadSpeechDetected = true;
+        this.addLog("info", "Speech detected");
+      }
+      return;
+    }
+
+    if (!this.vadSpeechDetected || this.vadLastSpeechAt === null) return;
+
+    const silentForMs = now - this.vadLastSpeechAt;
+    const recordingForMs = now - this.snapshot.currentRun.startedAt;
+    if (
+      silentForMs >= VAD_SILENCE_DURATION_MS &&
+      recordingForMs >= VAD_MIN_RECORDING_MS
+    ) {
+      this.vadStopRequested = true;
+      this.addLog("info", "Silence detected; stopping recording");
+      void this.stop();
+    }
+  }
+
+  private resetVadState(): void {
+    this.vadSpeechDetected = false;
+    this.vadLastSpeechAt = null;
+    this.vadStopRequested = false;
   }
 
   private addLog(level: DiagnosticLogLevel, message: string): void {

@@ -93,6 +93,19 @@ The microphone panel includes a small local preprocessing section:
 The gain/noise gate processing is applied before the captured PCM buffer is
 passed to Whisper.
 
+## Voice Activity Detection
+
+Recording can stop in three ways:
+
+- The user clicks `Stop Benchmark`.
+- VAD detects speech and then at least about one second of silence.
+- The 15 second safety timeout fires.
+
+The current VAD is lightweight and local. It uses the existing RMS/Peak input
+levels instead of a separate model. It waits until speech is detected before it
+allows silence to stop the recording, so initial background quiet does not end
+the run immediately.
+
 ## Metrics
 
 - Model timer: `modelResultReadyAt - modelAudioReceivedAt`.
