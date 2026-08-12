@@ -5,6 +5,8 @@ import {
 } from "./benchmarkMetrics";
 import {
   audioCaptureService,
+  DEFAULT_AUDIO_PROCESSING_CONFIG,
+  type AudioProcessingConfig,
   type AudioCaptureService,
   type AudioCaptureSession,
 } from "./audioCaptureService";
@@ -51,6 +53,8 @@ export interface BenchmarkSnapshot {
   whisperError: string | null;
   whisperProgress: WhisperProgress | null;
   inputVolume: number;
+  inputPeakVolume: number;
+  audioProcessingConfig: AudioProcessingConfig;
   currentRun: BenchmarkCurrentRun | null;
   history: BenchmarkHistoryRun[];
   summary: BenchmarkSummary;
@@ -86,6 +90,8 @@ export class BenchmarkController {
     whisperError: null,
     whisperProgress: null,
     inputVolume: 0,
+    inputPeakVolume: 0,
+    audioProcessingConfig: DEFAULT_AUDIO_PROCESSING_CONFIG,
     currentRun: null,
     history: [],
     summary: summarizeBenchmarkHistory([]),
@@ -116,7 +122,21 @@ export class BenchmarkController {
       currentRun: this.snapshot.currentRun
         ? { ...this.snapshot.currentRun }
         : null,
+      audioProcessingConfig: { ...this.snapshot.audioProcessingConfig },
     };
+  }
+
+  updateAudioProcessingConfig(patch: Partial<AudioProcessingConfig>): void {
+    if (this.snapshot.status === "recording" || this.snapshot.status === "transcribing") {
+      return;
+    }
+
+    this.patch({
+      audioProcessingConfig: {
+        ...this.snapshot.audioProcessingConfig,
+        ...patch,
+      },
+    });
   }
 
   async initializeModels(): Promise<void> {
@@ -127,6 +147,7 @@ export class BenchmarkController {
       moonshineError: null,
       whisperError: null,
       inputVolume: 0,
+      inputPeakVolume: 0,
     });
 
     try {
@@ -188,6 +209,7 @@ export class BenchmarkController {
     try {
       this.moonshineSession = await this.dependencies.moonshine.beginStream(callbacks);
       this.audioSession = await this.dependencies.audioCapture.start({
+        audioProcessingConfig: this.snapshot.audioProcessingConfig,
         onChunk: (chunk) => {
           if (this.activeRunId === runId && this.moonshineAudioReceivedAt === null) {
             this.moonshineAudioReceivedAt = this.dependencies.now();
@@ -196,6 +218,11 @@ export class BenchmarkController {
         },
         onVolume: (level) => {
           if (this.activeRunId === runId) this.patch({ inputVolume: level });
+        },
+        onInputLevel: (level) => {
+          if (this.activeRunId === runId) {
+            this.patch({ inputVolume: level.rms, inputPeakVolume: level.peak });
+          }
         },
         onError: (error) => {
           if (this.activeRunId === runId) {
@@ -246,6 +273,7 @@ export class BenchmarkController {
     this.patch({
       status: this.snapshot.moonshineStatus === "ready" ? "ready" : "idle",
       inputVolume: 0,
+      inputPeakVolume: 0,
       currentRun: null,
       history: [],
       summary: summarizeBenchmarkHistory([]),
@@ -310,7 +338,7 @@ export class BenchmarkController {
     if (this.activeRunId !== runId || !this.snapshot.currentRun) return pcm;
 
     this.updateCurrentRun({ stoppedAt, status: "transcribing" });
-    this.patch({ status: "transcribing", inputVolume: 0 });
+    this.patch({ status: "transcribing", inputVolume: 0, inputPeakVolume: 0 });
 
     return pcm;
   }

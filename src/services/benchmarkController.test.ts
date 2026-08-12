@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BenchmarkController } from "./benchmarkController";
 import {
+  calculateInputPeakVolume,
   calculateInputVolume,
   type AudioCaptureCallbacks,
   type AudioCaptureSession,
@@ -67,10 +68,32 @@ describe("BenchmarkController", () => {
     fakes.emitAudioInput(Float32Array.from([0.5, -0.5]));
 
     expect(controller.getSnapshot().inputVolume).toBeCloseTo(0.5);
+    expect(controller.getSnapshot().inputPeakVolume).toBeCloseTo(0.5);
 
     await controller.stop();
 
     expect(controller.getSnapshot().inputVolume).toBe(0);
+    expect(controller.getSnapshot().inputPeakVolume).toBe(0);
+  });
+
+  it("passes the selected audio processing config into microphone capture", async () => {
+    const fakes = createFakes();
+    const controller = new BenchmarkController(fakes.dependencies);
+
+    controller.updateAudioProcessingConfig({
+      inputGain: 3,
+      noiseGateEnabled: true,
+      browserProcessingMode: "raw",
+    });
+    await controller.initializeModels();
+    await controller.start();
+
+    expect(fakes.audioSession.callbacks?.audioProcessingConfig).toMatchObject({
+      inputGain: 3,
+      noiseGateEnabled: true,
+      noiseGateThreshold: 0.015,
+      browserProcessingMode: "raw",
+    });
   });
 
   it("ignores stale Whisper updates after reset", async () => {
@@ -242,13 +265,17 @@ class FakeAudioSession implements AudioCaptureSession {
   stopped = false;
   stopCalls = 0;
   private consumer: ((chunk: Float32Array) => void) | null = null;
-  private callbacks?: AudioCaptureCallbacks;
+  callbacks?: AudioCaptureCallbacks;
 
   setCallbacks(callbacks?: AudioCaptureCallbacks): void {
     this.callbacks = callbacks;
   }
 
   emitInput(chunk: Float32Array): void {
+    this.callbacks?.onInputLevel?.({
+      rms: calculateInputVolume(chunk),
+      peak: calculateInputPeakVolume(chunk),
+    });
     this.callbacks?.onVolume?.(calculateInputVolume(chunk));
     this.callbacks?.onChunk?.(chunk);
     this.consumer?.(chunk);

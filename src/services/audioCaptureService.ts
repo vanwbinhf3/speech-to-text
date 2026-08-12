@@ -11,8 +11,31 @@ import { mapSpeechError, SpeechServiceError } from "./moonshineService";
 export interface AudioCaptureCallbacks {
   onChunk?: AudioChunkConsumer;
   onVolume?: (level: number) => void;
+  onInputLevel?: (level: AudioInputLevel) => void;
   onError?: (error: SpeechServiceError) => void;
+  audioProcessingConfig?: AudioProcessingConfig;
 }
+
+export type BrowserProcessingMode = "enhanced" | "raw";
+
+export interface AudioProcessingConfig {
+  inputGain: number;
+  noiseGateEnabled: boolean;
+  noiseGateThreshold: number;
+  browserProcessingMode: BrowserProcessingMode;
+}
+
+export interface AudioInputLevel {
+  rms: number;
+  peak: number;
+}
+
+export const DEFAULT_AUDIO_PROCESSING_CONFIG: AudioProcessingConfig = {
+  inputGain: 2,
+  noiseGateEnabled: false,
+  noiseGateThreshold: 0.015,
+  browserProcessingMode: "enhanced",
+};
 
 export interface AudioCaptureSession {
   addConsumer(consumer: AudioChunkConsumer): () => void;
@@ -70,12 +93,18 @@ export class AudioCaptureService {
 
     try {
       assertAudioSupport();
+      const audioProcessingConfig = {
+        ...DEFAULT_AUDIO_PROCESSING_CONFIG,
+        ...callbacks.audioProcessingConfig,
+      };
+      const useBrowserProcessing =
+        audioProcessingConfig.browserProcessingMode === "enhanced";
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+          echoCancellation: useBrowserProcessing,
+          noiseSuppression: useBrowserProcessing,
+          autoGainControl: useBrowserProcessing,
         },
         video: false,
       });
@@ -96,18 +125,29 @@ export class AudioCaptureService {
       const unsubscribeVolume = callbacks.onVolume
         ? session.addConsumer((chunk) => callbacks.onVolume?.(calculateInputVolume(chunk)))
         : () => undefined;
+      const unsubscribeInputLevel = callbacks.onInputLevel
+        ? session.addConsumer((chunk) =>
+            callbacks.onInputLevel?.({
+              rms: calculateInputVolume(chunk),
+              peak: calculateInputPeakVolume(chunk),
+            }),
+          )
+        : () => undefined;
       const cleanupCallbacks = () => unsubscribe();
       const cleanupVolumeCallbacks = () => unsubscribeVolume();
+      const cleanupInputLevelCallbacks = () => unsubscribeInputLevel();
 
       if (audioContext.audioWorklet) {
-        await startWorkletCapture(audioContext, source, session, () => {
+        await startWorkletCapture(audioContext, source, session, audioProcessingConfig, () => {
           cleanupCallbacks();
           cleanupVolumeCallbacks();
+          cleanupInputLevelCallbacks();
         });
       } else {
-        startScriptProcessorCapture(audioContext, source, session, () => {
+        startScriptProcessorCapture(audioContext, source, session, audioProcessingConfig, () => {
           cleanupCallbacks();
           cleanupVolumeCallbacks();
+          cleanupInputLevelCallbacks();
         });
       }
 
@@ -139,6 +179,7 @@ async function startWorkletCapture(
   audioContext: AudioContext,
   source: MediaStreamAudioSourceNode,
   session: BufferedAudioCaptureSession,
+  audioProcessingConfig: AudioProcessingConfig,
   onCleanup: () => void,
 ): Promise<void> {
   const processorCode = `
@@ -161,7 +202,7 @@ async function startWorkletCapture(
 
   const node = new AudioWorkletNode(audioContext, "pcm-capture-processor");
   node.port.onmessage = (event: MessageEvent<Float32Array[]>) => {
-    pushRawChannels(session, event.data, audioContext.sampleRate);
+    pushRawChannels(session, event.data, audioContext.sampleRate, audioProcessingConfig);
   };
   source.connect(node);
   node.connect(audioContext.destination);
@@ -179,6 +220,7 @@ function startScriptProcessorCapture(
   audioContext: AudioContext,
   source: MediaStreamAudioSourceNode,
   session: BufferedAudioCaptureSession,
+  audioProcessingConfig: AudioProcessingConfig,
   onCleanup: () => void,
 ): void {
   const node = audioContext.createScriptProcessor(4096, 1, 1);
@@ -187,7 +229,7 @@ function startScriptProcessorCapture(
       { length: event.inputBuffer.numberOfChannels },
       (_, index) => new Float32Array(event.inputBuffer.getChannelData(index)),
     );
-    pushRawChannels(session, channels, audioContext.sampleRate);
+    pushRawChannels(session, channels, audioContext.sampleRate, audioProcessingConfig);
   };
   source.connect(node);
   node.connect(audioContext.destination);
@@ -205,10 +247,11 @@ function pushRawChannels(
   session: BufferedAudioCaptureSession,
   channels: readonly Float32Array[],
   sampleRate: number,
+  audioProcessingConfig: AudioProcessingConfig,
 ): void {
   const mono = downmixToMono(channels);
   const resampled = resampleLinear(mono, sampleRate, TARGET_SAMPLE_RATE);
-  session.push(resampled);
+  session.push(applyAudioProcessing(resampled, audioProcessingConfig));
 }
 
 export const audioCaptureService = new AudioCaptureService();
@@ -219,4 +262,32 @@ export function calculateInputVolume(chunk: Float32Array): number {
   for (const sample of chunk) sumSquares += sample * sample;
   const rms = Math.sqrt(sumSquares / chunk.length);
   return Math.min(1, Math.max(0, rms));
+}
+
+export function calculateInputPeakVolume(chunk: Float32Array): number {
+  let peak = 0;
+  for (const sample of chunk) peak = Math.max(peak, Math.abs(sample));
+  return Math.min(1, Math.max(0, peak));
+}
+
+export function applyAudioProcessing(
+  chunk: Float32Array,
+  config: AudioProcessingConfig,
+): Float32Array {
+  const gain = Math.min(4, Math.max(1, config.inputGain));
+  const gateThreshold = Math.max(0, config.noiseGateThreshold);
+  const processed = new Float32Array(chunk.length);
+
+  for (let index = 0; index < chunk.length; index += 1) {
+    const sample = chunk[index];
+    const gated =
+      config.noiseGateEnabled && Math.abs(sample) < gateThreshold ? 0 : sample;
+    processed[index] = clampAudioSample(gated * gain);
+  }
+
+  return processed;
+}
+
+function clampAudioSample(sample: number): number {
+  return Math.min(1, Math.max(-1, sample));
 }

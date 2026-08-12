@@ -93,10 +93,15 @@ export default function App() {
           status={snapshot.status}
           partialTranscript={snapshot.currentRun?.partialTranscript ?? ""}
           inputVolume={snapshot.inputVolume}
+          inputPeakVolume={snapshot.inputPeakVolume}
+          audioProcessingConfig={snapshot.audioProcessingConfig}
           expectedPageId={expectedPageId}
           canStart={canStart}
           running={running}
           onExpectedPageChange={setExpectedPageId}
+          onAudioProcessingConfigChange={(patch) =>
+            benchmarkController.updateAudioProcessingConfig(patch)
+          }
           onStart={() => void benchmarkController.start(expectedPageId)}
           onStop={() => void benchmarkController.stop()}
           onReset={() => void benchmarkController.reset()}

@@ -84,6 +84,22 @@ The matcher normalizes text, checks token-boundary aliases, applies a small
 navigation-cue boost, and uses lightweight Levenshtein matching with confidence
 and ambiguity thresholds.
 
+## Audio Quality Controls
+
+The microphone panel includes a small local preprocessing section:
+
+- Input gain: applies `1x` to `4x` gain after resampling. The default is `2x`.
+- RMS and Peak meters: RMS shows average speech energy; Peak shows the loudest
+  recent sample. If both stay low while speaking, increase gain or check the mic.
+- Noise gate: optional, off by default. It zeros samples below the configured
+  threshold before gain is applied.
+- Browser processing: `Enhanced microphone` enables browser echo cancellation,
+  noise suppression, and auto gain control; `Raw microphone` disables them for
+  comparison.
+
+The gain/noise gate processing is applied before audio is sent to Moonshine and
+before the captured PCM buffer is passed to Whisper.
+
 ## Metrics
 
 - Model timer: `modelResultReadyAt - modelAudioReceivedAt`.
