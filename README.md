@@ -1,10 +1,9 @@
-# Moonshine-First Voice Navigation Benchmark
+# Whisper Voice Navigation Benchmark
 
 A browser-only technical proof of concept for English speech-to-text plus local
-voice navigation intent detection. Moonshine Tiny Streaming consumes the live
-microphone stream first. After Moonshine returns its final transcript, the demo
-sends the full captured audio buffer to Whisper.cpp tiny.en Q5_1 for a batch
-comparison, avoiding two ASR models running at the same time.
+voice navigation intent detection. Moonshine is temporarily disabled in the
+runtime flow. The demo captures microphone audio locally, then sends the
+completed audio buffer to Whisper.cpp tiny.en Q5_1 for speech-to-text.
 
 No Web Speech API, backend, cloud STT API, OpenAI API, Google Speech API,
 AssemblyAI, database, authentication, or LLM intent detection is used.
@@ -37,7 +36,7 @@ excluded from Git.
 npm run dev
 ```
 
-Open the Vite URL, allow microphone access, wait for Moonshine to be ready,
+Open the Vite URL, allow microphone access, wait for Whisper to be ready,
 optionally select an expected page label, then speak a short English command
 such as `open dashboard` or `show GitHub integration`.
 
@@ -60,10 +59,6 @@ Microphone
     |
 Shared 16 kHz mono PCM capture
     |
-Moonshine Tiny Streaming
-    |
-Moonshine final transcript
-    |
 Send full captured PCM buffer to Whisper.cpp tiny.en Q5_1
     |
 Whisper transcript
@@ -73,11 +68,9 @@ Local TypeScript intent matcher
 Navigation target and benchmark metrics
 ```
 
-`AudioCaptureService` owns `getUserMedia()` and stores the same resampled PCM
-chunks that it streams into Moonshine. Moonshine receives chunks immediately
-through a streaming `Transcriber.createStream()` session. Whisper is lazy-loaded
-only after Moonshine returns a final transcript, then receives the completed PCM
-buffer and runs in a worker using the self-hosted official whisper.cpp runtime.
+`AudioCaptureService` owns `getUserMedia()` and stores the resampled PCM chunks.
+When recording stops, Whisper receives the completed PCM buffer and runs in a
+worker using the self-hosted official whisper.cpp runtime.
 
 Both transcripts call the same deterministic `detectNavigationIntent()` matcher.
 The matcher normalizes text, checks token-boundary aliases, applies a small
@@ -97,26 +90,21 @@ The microphone panel includes a small local preprocessing section:
   noise suppression, and auto gain control; `Raw microphone` disables them for
   comparison.
 
-The gain/noise gate processing is applied before audio is sent to Moonshine and
-before the captured PCM buffer is passed to Whisper.
+The gain/noise gate processing is applied before the captured PCM buffer is
+passed to Whisper.
 
 ## Metrics
 
 - Model timer: `modelResultReadyAt - modelAudioReceivedAt`.
-  - Moonshine starts this timer when the first live PCM chunk is handed to the
-    Moonshine stream and stops it when Moonshine returns the final transcript.
   - Whisper starts this timer when the completed PCM buffer is handed to the
     Whisper service and stops it when Whisper returns its transcript.
-- Moonshine STT completion: `line.lastTranscriptionLatencyMs`, shown as an
-  engine-provided debug value where available.
 - Whisper inference: worker-side `transcriptReadyAt - inferenceStartedAt`, kept
   as a debug value and not mixed with main-thread timestamps for the main timer.
 - Intent matching: local matcher duration measured with `performance.now()`.
 - Perceived latency: `Command Ready After Stop = max(0, intentDetectedAt - recordingStoppedAt)`.
 
-Moonshine is streaming and may finish before manual/auto recording stop, so the
-perceived-latency metric clamps early readiness to zero. These numbers are useful for
-perceived voice-navigation latency, not a scientific ASR benchmark.
+These numbers are useful for perceived voice-navigation latency, not a
+scientific ASR benchmark.
 
 ## Browser and Hosting Requirements
 
@@ -138,7 +126,5 @@ microphone audio to an external speech-to-text API. The first install downloads
 model/runtime files from official Moonshine and whisper.cpp sources; the running
 app serves those assets from the application origin.
 
-To verify, open DevTools Network after Moonshine is ready, start a command, and
-confirm that speaking creates no microphone audio upload requests. On the first
-completed command, Whisper model/runtime assets may load from the local app
-origin before the batch comparison runs.
+To verify, open DevTools Network after Whisper is ready, start a command, and
+confirm that speaking creates no microphone audio upload requests.

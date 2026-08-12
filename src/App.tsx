@@ -33,7 +33,7 @@ export default function App() {
   const running =
     snapshot.status === "recording" || snapshot.status === "transcribing";
   const canStart =
-    snapshot.moonshineStatus === "ready" && snapshot.status !== "loading-models";
+    snapshot.whisperStatus === "ready" && snapshot.status !== "loading-models";
 
   const detectedPages = useMemo(
     () => ({
@@ -51,11 +51,11 @@ export default function App() {
         </div>
         <div>
           <p className="eyebrow">Technical proof of concept</p>
-          <h1>Moonshine-First Voice Benchmark</h1>
+          <h1>Whisper Voice Navigation Benchmark</h1>
           <p className="hero-copy">
-            Speak a short English navigation command. Moonshine streams the live
-            microphone first; after its final transcript, the full captured audio
-            is sent to Whisper.cpp for a batch comparison.
+            Speak a short English navigation command. The browser captures your
+            microphone audio locally, then sends the captured buffer to
+            Whisper.cpp for speech-to-text and intent matching.
           </p>
         </div>
         <div className="privacy-pill">
@@ -120,7 +120,7 @@ export default function App() {
       <BenchmarkHistory history={snapshot.history} />
 
       <footer>
-        Moonshine Tiny Streaming v2 · Whisper.cpp tiny.en Q5_1 · Sequential local benchmark
+        Moonshine disabled temporarily · Whisper.cpp tiny.en Q5_1 · Local benchmark
       </footer>
     </main>
   );

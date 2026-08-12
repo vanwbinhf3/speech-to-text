@@ -7,67 +7,61 @@ import {
   type AudioCaptureCallbacks,
   type AudioCaptureSession,
 } from "./audioCaptureService";
-import {
-  SpeechServiceError,
-  type MoonshineStreamSession,
-  type SpeechRecognitionCallbacks,
-} from "./moonshineService";
+import type { SpeechRecognitionCallbacks } from "./moonshineService";
 import type { WhisperTranscriptResult } from "./whisperService";
 
 describe("BenchmarkController", () => {
-  it("loads only Moonshine initially and defers Whisper until Moonshine final", async () => {
+  it("loads only Whisper and leaves Moonshine disabled", async () => {
     const fakes = createFakes();
     const controller = new BenchmarkController(fakes.dependencies);
 
     await controller.initializeModels();
 
-    expect(fakes.dependencies.moonshine.initialize).toHaveBeenCalledTimes(1);
-    expect(fakes.dependencies.whisper.initialize).not.toHaveBeenCalled();
-    expect(controller.getSnapshot().moonshineStatus).toBe("ready");
-    expect(controller.getSnapshot().whisperStatus).toBe("idle");
+    expect(fakes.dependencies.whisper.initialize).toHaveBeenCalledTimes(1);
+    expect(fakes.dependencies.moonshine.initialize).not.toHaveBeenCalled();
+    expect(controller.getSnapshot().whisperStatus).toBe("ready");
+    expect(controller.getSnapshot().moonshineStatus).toBe("idle");
   });
 
-  it("auto-stops capture and starts Whisper after Moonshine final", async () => {
-    const fakes = createFakes();
-    const controller = new BenchmarkController(fakes.dependencies);
-
-    await controller.initializeModels();
-    await controller.start();
-    fakes.emitMoonshineFinal("open dashboard");
-
-    await vi.waitFor(() => expect(fakes.audioSession.stopCalls).toBe(1));
-    await vi.waitFor(() => expect(fakes.dependencies.whisper.initialize).toHaveBeenCalledTimes(1));
-    expect(fakes.whisperTranscribeCalls).toHaveLength(1);
-    expect(controller.getSnapshot().currentRun?.moonshine?.intent.pageId).toBe("dashboard");
-  });
-
-  it("records per-model timers from audio input handoff to model result", async () => {
+  it("records audio and transcribes with Whisper after manual stop", async () => {
     const fakes = createFakes();
     const controller = new BenchmarkController(fakes.dependencies);
 
     await controller.initializeModels();
     await controller.start();
     fakes.emitAudioInput();
-    fakes.emitMoonshineFinal("open dashboard");
-    await vi.waitFor(() => expect(fakes.whisperTranscribeCalls).toHaveLength(1));
+    await controller.stop();
+
+    expect(fakes.dependencies.moonshine.beginStream).not.toHaveBeenCalled();
+    expect(fakes.audioSession.stopCalls).toBe(1);
+    expect(fakes.whisperTranscribeCalls).toHaveLength(1);
+
     fakes.resolveWhisper("open dashboard");
 
     await vi.waitFor(() => expect(controller.getSnapshot().history).toHaveLength(1));
-    const run = controller.getSnapshot().history[0];
+    expect(controller.getSnapshot().history[0].moonshine).toBeNull();
+    expect(controller.getSnapshot().history[0].whisper?.intent.pageId).toBe("dashboard");
+  });
 
-    expect(run.moonshine?.metrics.modelResultReadyAt).toBeGreaterThan(
-      run.moonshine?.metrics.modelAudioReceivedAt ?? 0,
+  it("records Whisper model timer from audio handoff to result", async () => {
+    const fakes = createFakes();
+    const controller = new BenchmarkController(fakes.dependencies);
+
+    await controller.initializeModels();
+    await controller.start();
+    fakes.emitAudioInput();
+    await controller.stop();
+    fakes.resolveWhisper("open dashboard");
+
+    await vi.waitFor(() => expect(controller.getSnapshot().history).toHaveLength(1));
+    const result = controller.getSnapshot().history[0].whisper;
+
+    expect(result?.metrics.modelResultReadyAt).toBeGreaterThan(
+      result?.metrics.modelAudioReceivedAt ?? 0,
     );
-    expect(run.moonshine?.metrics.modelProcessingTimeMs).toBe(
-      (run.moonshine?.metrics.modelResultReadyAt ?? 0) -
-        (run.moonshine?.metrics.modelAudioReceivedAt ?? 0),
-    );
-    expect(run.whisper?.metrics.modelResultReadyAt).toBeGreaterThan(
-      run.whisper?.metrics.modelAudioReceivedAt ?? 0,
-    );
-    expect(run.whisper?.metrics.modelProcessingTimeMs).toBe(
-      (run.whisper?.metrics.modelResultReadyAt ?? 0) -
-        (run.whisper?.metrics.modelAudioReceivedAt ?? 0),
+    expect(result?.metrics.modelProcessingTimeMs).toBe(
+      (result?.metrics.modelResultReadyAt ?? 0) -
+        (result?.metrics.modelAudioReceivedAt ?? 0),
     );
   });
 
@@ -108,27 +102,26 @@ describe("BenchmarkController", () => {
     });
   });
 
-  it("records diagnostic logs for microphone, audio, Moonshine, and errors", async () => {
+  it("records diagnostic logs for microphone, audio, and Whisper", async () => {
     const fakes = createFakes();
     const controller = new BenchmarkController(fakes.dependencies);
 
     await controller.initializeModels();
     await controller.start();
     fakes.emitAudioInput(Float32Array.from([0.5, -0.5]));
-    fakes.emitMoonshinePartial("open");
-    fakes.emitMoonshineError(new Error("moonshine stalled"));
+    await controller.stop();
+    fakes.resolveWhisper("open tasks");
 
+    await vi.waitFor(() => expect(controller.getSnapshot().history).toHaveLength(1));
     const messages = controller.getSnapshot().diagnosticLogs.map((entry) => entry.message);
 
-    expect(messages).toContain("Moonshine model ready");
+    expect(messages).toContain("Whisper model ready");
+    expect(messages).toContain("Moonshine disabled; using Whisper-only mode");
     expect(messages).toContain("Starting benchmark run run-1");
     expect(messages).toContain("Microphone capture started");
     expect(messages).toContain("First audio chunk received");
-    expect(messages).toContain('Moonshine partial: "open"');
-    expect(controller.getSnapshot().diagnosticLogs.at(-1)).toMatchObject({
-      level: "error",
-      message: "Moonshine error: moonshine stalled",
-    });
+    expect(messages).toContain("Sending captured audio to Whisper");
+    expect(messages).toContain('Whisper final: "open tasks"');
   });
 
   it("ignores stale Whisper updates after reset", async () => {
@@ -137,7 +130,7 @@ describe("BenchmarkController", () => {
 
     await controller.initializeModels();
     await controller.start();
-    fakes.emitMoonshineFinal("open dashboard");
+    await controller.stop();
     await controller.reset();
     fakes.resolveWhisper("open settings");
 
@@ -154,7 +147,8 @@ describe("BenchmarkController", () => {
     await controller.initializeModels();
     for (let index = 0; index < 22; index += 1) {
       await controller.start();
-      fakes.emitMoonshineFinal("open dashboard");
+      fakes.emitAudioInput();
+      await controller.stop();
       await vi.waitFor(() =>
         expect(fakes.whisperTranscribeCalls).toHaveLength(index + 1),
       );
@@ -166,39 +160,25 @@ describe("BenchmarkController", () => {
     expect(controller.getSnapshot().history.at(-1)?.id).toBe("run-3");
   });
 
-  it("does not run Whisper after manual stop without a Moonshine final", async () => {
+  it("shows an error and skips history when Whisper fails", async () => {
     const fakes = createFakes();
     const controller = new BenchmarkController(fakes.dependencies);
 
     await controller.initializeModels();
     await controller.start();
     await controller.stop();
-
-    expect(fakes.audioSession.stopCalls).toBe(1);
-    expect(fakes.dependencies.whisper.initialize).not.toHaveBeenCalled();
-    expect(fakes.whisperTranscribeCalls).toHaveLength(0);
-    expect(controller.getSnapshot().history).toHaveLength(0);
-    expect(controller.getSnapshot().currentRun?.error).toBe(
-      "Stopped before Moonshine returned a final transcript.",
-    );
-  });
-
-  it("keeps a Moonshine result when Whisper fails", async () => {
-    const fakes = createFakes();
-    const controller = new BenchmarkController(fakes.dependencies);
-
-    await controller.initializeModels();
-    await controller.start();
-    fakes.emitMoonshineFinal("open dashboard");
     await vi.waitFor(() => expect(fakes.whisperTranscribeCalls).toHaveLength(1));
     fakes.rejectWhisper(new Error("worker crashed"));
 
-    await vi.waitFor(() => expect(controller.getSnapshot().history).toHaveLength(1));
-    expect(controller.getSnapshot().history[0].moonshine?.intent.pageId).toBe("dashboard");
-    expect(controller.getSnapshot().history[0].whisper).toBeNull();
+    await vi.waitFor(() => expect(controller.getSnapshot().currentRun?.error).toBe("worker crashed"));
+    expect(controller.getSnapshot().history).toHaveLength(0);
+    expect(controller.getSnapshot().diagnosticLogs.at(-1)).toMatchObject({
+      level: "error",
+      message: "Whisper error: worker crashed",
+    });
   });
 
-  it("stops Moonshine and clears active run when microphone start fails", async () => {
+  it("clears active run when microphone start fails", async () => {
     const fakes = createFakes();
     fakes.dependencies.audioCapture.start = vi.fn(async () => {
       throw new Error("permission denied");
@@ -208,18 +188,16 @@ describe("BenchmarkController", () => {
     await controller.initializeModels();
     await expect(controller.start()).rejects.toThrow("permission denied");
 
-    expect(fakes.latestMoonshineSession?.stopped).toBe(true);
+    expect(fakes.dependencies.moonshine.beginStream).not.toHaveBeenCalled();
     expect(controller.getSnapshot().status).toBe("error");
   });
 });
 
 function createFakes() {
-  let moonshineCallbacks: SpeechRecognitionCallbacks | null = null;
   let whisperResolve:
     | ((result: WhisperTranscriptResult) => void)
     | null = null;
   let whisperReject: ((error: Error) => void) | null = null;
-  let latestMoonshineSession: FakeMoonshineSession | null = null;
   let nowValue = 1_000;
 
   const audioSession = new FakeAudioSession();
@@ -242,11 +220,7 @@ function createFakes() {
     },
     moonshine: {
       initialize: vi.fn(async () => undefined),
-      beginStream: vi.fn(async (callbacks: SpeechRecognitionCallbacks) => {
-        moonshineCallbacks = callbacks;
-        latestMoonshineSession = new FakeMoonshineSession();
-        return latestMoonshineSession;
-      }),
+      beginStream: vi.fn(async (_callbacks: SpeechRecognitionCallbacks) => new FakeMoonshineSession()),
       stopListening: vi.fn(async () => undefined),
       onModelProgress: vi.fn(),
     },
@@ -264,26 +238,8 @@ function createFakes() {
 
   return {
     dependencies,
-    get latestMoonshineSession() {
-      return latestMoonshineSession;
-    },
     audioSession,
     whisperTranscribeCalls,
-    emitMoonshineFinal(transcript: string) {
-      moonshineCallbacks?.onFinalTranscript?.({
-        text: transcript,
-        sttCompletionTimeMs: 30,
-        lineId: `moonshine-${transcript}`,
-      });
-    },
-    emitMoonshinePartial(transcript: string) {
-      moonshineCallbacks?.onPartialTranscript?.(transcript);
-    },
-    emitMoonshineError(error: Error) {
-      moonshineCallbacks?.onError?.(
-        new SpeechServiceError("recognition-failed", error.message),
-      );
-    },
     emitAudioInput(chunk = Float32Array.from([0.1, 0.2])) {
       audioSession.emitInput(chunk);
     },
@@ -338,7 +294,7 @@ class FakeAudioSession implements AudioCaptureSession {
   }
 }
 
-class FakeMoonshineSession implements MoonshineStreamSession {
+class FakeMoonshineSession {
   stopped = false;
 
   acceptAudio(): void {}

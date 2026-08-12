@@ -151,8 +151,8 @@ export function BenchmarkControls({
       </div>
 
       <div className="partial-box">
-        <span>Moonshine partial</span>
-        <p>{partialTranscript ? `"${partialTranscript}"` : "-"}</p>
+        <span>Streaming partial</span>
+        <p>{partialTranscript ? `"${partialTranscript}"` : "Moonshine disabled; Whisper returns text after Stop."}</p>
       </div>
     </section>
   );

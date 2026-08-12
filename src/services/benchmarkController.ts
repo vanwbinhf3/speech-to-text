@@ -153,35 +153,40 @@ export class BenchmarkController {
   async initializeModels(): Promise<void> {
     this.patch({
       status: "loading-models",
-      moonshineStatus: "loading",
-      whisperStatus: "idle",
+      moonshineStatus: "idle",
+      whisperStatus: "loading",
       moonshineError: null,
       whisperError: null,
       inputVolume: 0,
       inputPeakVolume: 0,
     });
-    this.addLog("info", "Loading Moonshine model");
+    this.addLog("warn", "Moonshine disabled; using Whisper-only mode");
+    this.addLog("info", "Loading Whisper model");
 
     try {
-      await this.dependencies.moonshine.initialize();
+      await this.dependencies.whisper.initialize({
+        onProgress: (progress) => {
+          this.patch({ whisperProgress: progress });
+        },
+      });
       this.patch({
         status: "ready",
-        moonshineStatus: "ready",
-        moonshineError: null,
+        whisperStatus: "ready",
+        whisperError: null,
       });
-      this.addLog("info", "Moonshine model ready");
+      this.addLog("info", "Whisper model ready");
     } catch (error) {
       this.patch({
         status: "error",
-        moonshineStatus: "error",
-        moonshineError: errorMessage(error),
+        whisperStatus: "error",
+        whisperError: errorMessage(error),
       });
-      this.addLog("error", `Moonshine model failed: ${errorMessage(error)}`);
+      this.addLog("error", `Whisper model failed: ${errorMessage(error)}`);
     }
   }
 
   async start(expectedPageId: string | null = null): Promise<void> {
-    if (this.snapshot.moonshineStatus !== "ready") return;
+    if (this.snapshot.whisperStatus !== "ready") return;
 
     const runId = `run-${++this.runCounter}`;
     const startedAt = this.dependencies.now();
@@ -203,37 +208,14 @@ export class BenchmarkController {
       },
     });
 
-    const callbacks: SpeechRecognitionCallbacks = {
-      onPartialTranscript: (text) => {
-        if (this.activeRunId !== runId) return;
-        this.updateCurrentRun({ partialTranscript: text });
-        this.addLog("info", `Moonshine partial: "${text}"`);
-      },
-      onFinalTranscript: (finalTranscript) => {
-        this.addLog("info", `Moonshine final: "${finalTranscript.text}"`);
-        void this.handleMoonshineFinal(runId, finalTranscript.text, {
-          lineId: finalTranscript.lineId,
-          sttCompletionTimeMs: finalTranscript.sttCompletionTimeMs,
-        });
-      },
-      onError: (error: SpeechServiceError) => {
-        if (this.activeRunId !== runId) return;
-        this.updateCurrentRun({ error: error.message, status: "error" });
-        this.patch({ status: "error" });
-        this.addLog("error", `Moonshine error: ${error.message}`);
-      },
-    };
-
     try {
-      this.moonshineSession = await this.dependencies.moonshine.beginStream(callbacks);
       this.audioSession = await this.dependencies.audioCapture.start({
         audioProcessingConfig: this.snapshot.audioProcessingConfig,
-        onChunk: (chunk) => {
+        onChunk: () => {
           if (this.activeRunId === runId && this.moonshineAudioReceivedAt === null) {
             this.moonshineAudioReceivedAt = this.dependencies.now();
             this.addLog("info", "First audio chunk received");
           }
-          this.moonshineSession?.acceptAudio(chunk);
         },
         onVolume: (level) => {
           if (this.activeRunId === runId) this.patch({ inputVolume: level });
@@ -256,8 +238,6 @@ export class BenchmarkController {
         void this.stop();
       }, 15_000);
     } catch (error) {
-      await this.moonshineSession?.stop().catch(() => undefined);
-      this.moonshineSession = null;
       this.audioSession = null;
       this.activeRunId = null;
       this.moonshineAudioReceivedAt = null;
@@ -271,18 +251,16 @@ export class BenchmarkController {
   async stop(): Promise<void> {
     const runId = this.activeRunId;
     if (!runId || !this.audioSession) return;
-    await this.stopRecording(runId);
+    const pcm = await this.stopRecording(runId);
     if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
-    if (!this.snapshot.currentRun.moonshine) {
-      this.activeRunId = null;
-      this.moonshineAudioReceivedAt = null;
-      this.updateCurrentRun({
-        error: "Stopped before Moonshine returned a final transcript.",
-        status: "complete",
-      });
-      this.patch({ status: "complete" });
-      this.addLog("warn", "Stopped before Moonshine returned a final transcript");
+    if (pcm.length === 0) {
+      this.updateCurrentRun({ error: "No captured PCM audio was available.", status: "error" });
+      this.patch({ status: "error" });
+      this.addLog("error", "No captured PCM audio was available for Whisper");
+      return;
     }
+
+    void this.runWhisper(runId, pcm);
   }
 
   async reset(): Promise<void> {
@@ -291,11 +269,10 @@ export class BenchmarkController {
     if (this.timeoutId) this.dependencies.clearTimeout(this.timeoutId);
     this.timeoutId = null;
     await this.audioSession?.stop().catch(() => undefined);
-    await this.moonshineSession?.stop().catch(() => undefined);
     this.audioSession = null;
     this.moonshineSession = null;
     this.patch({
-      status: this.snapshot.moonshineStatus === "ready" ? "ready" : "idle",
+      status: this.snapshot.whisperStatus === "ready" ? "ready" : "idle",
       inputVolume: 0,
       inputPeakVolume: 0,
       currentRun: null,
@@ -402,7 +379,7 @@ export class BenchmarkController {
   }
 
   private async runWhisper(runId: string, pcm: Float32Array): Promise<void> {
-    if (!this.snapshot.currentRun?.moonshine) return;
+    if (!this.snapshot.currentRun) return;
 
     try {
       const modelAudioReceivedAt = this.dependencies.now();
@@ -430,6 +407,7 @@ export class BenchmarkController {
     } catch (error) {
       if (this.activeRunId !== runId) return;
       this.updateCurrentRun({ error: errorMessage(error), status: "error" });
+      this.patch({ status: "error" });
       this.addLog("error", `Whisper error: ${errorMessage(error)}`);
       this.completeRunIfReady(true);
     }

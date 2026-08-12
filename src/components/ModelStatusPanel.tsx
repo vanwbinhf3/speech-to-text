@@ -21,7 +21,7 @@ export function ModelStatusPanel({
     <section className="panel model-status-panel" aria-labelledby="models-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Sequential browser ASR</p>
+          <p className="eyebrow">Browser ASR</p>
           <h2 id="models-heading">Model status</h2>
         </div>
         {(moonshineError || whisperError) && (
@@ -34,7 +34,7 @@ export function ModelStatusPanel({
         <ModelStatusCard
           name="Moonshine Tiny Streaming"
           status={moonshineStatus}
-          detail={moonshineError ?? "Self-hosted Tiny Streaming assets"}
+          detail={moonshineError ?? "Temporarily disabled for Whisper-only testing"}
         />
         <ModelStatusCard
           name="Whisper.cpp tiny.en Q5_1"
@@ -44,7 +44,7 @@ export function ModelStatusPanel({
             (whisperProgress
               ? `${Math.round(whisperProgress.fraction * 100)}% ${whisperProgress.file}`
               : whisperStatus === "idle"
-                ? "Loads only after Moonshine returns a final transcript"
+                ? "Waiting to load Whisper runtime and model"
                 : "Self-hosted runtime and model")
           }
         />
