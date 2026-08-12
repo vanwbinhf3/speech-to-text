@@ -38,6 +38,14 @@ type RunStatus =
   | "error";
 
 type ModelStatus = "idle" | "loading" | "ready" | "error";
+type DiagnosticLogLevel = "info" | "warn" | "error";
+
+export interface DiagnosticLogEntry {
+  id: string;
+  at: number;
+  level: DiagnosticLogLevel;
+  message: string;
+}
 
 export interface BenchmarkCurrentRun extends BenchmarkHistoryRun {
   status: RunStatus;
@@ -55,6 +63,7 @@ export interface BenchmarkSnapshot {
   inputVolume: number;
   inputPeakVolume: number;
   audioProcessingConfig: AudioProcessingConfig;
+  diagnosticLogs: DiagnosticLogEntry[];
   currentRun: BenchmarkCurrentRun | null;
   history: BenchmarkHistoryRun[];
   summary: BenchmarkSummary;
@@ -92,6 +101,7 @@ export class BenchmarkController {
     inputVolume: 0,
     inputPeakVolume: 0,
     audioProcessingConfig: DEFAULT_AUDIO_PROCESSING_CONFIG,
+    diagnosticLogs: [],
     currentRun: null,
     history: [],
     summary: summarizeBenchmarkHistory([]),
@@ -123,6 +133,7 @@ export class BenchmarkController {
         ? { ...this.snapshot.currentRun }
         : null,
       audioProcessingConfig: { ...this.snapshot.audioProcessingConfig },
+      diagnosticLogs: [...this.snapshot.diagnosticLogs],
     };
   }
 
@@ -149,6 +160,7 @@ export class BenchmarkController {
       inputVolume: 0,
       inputPeakVolume: 0,
     });
+    this.addLog("info", "Loading Moonshine model");
 
     try {
       await this.dependencies.moonshine.initialize();
@@ -157,12 +169,14 @@ export class BenchmarkController {
         moonshineStatus: "ready",
         moonshineError: null,
       });
+      this.addLog("info", "Moonshine model ready");
     } catch (error) {
       this.patch({
         status: "error",
         moonshineStatus: "error",
         moonshineError: errorMessage(error),
       });
+      this.addLog("error", `Moonshine model failed: ${errorMessage(error)}`);
     }
   }
 
@@ -173,6 +187,7 @@ export class BenchmarkController {
     const startedAt = this.dependencies.now();
     this.activeRunId = runId;
     this.moonshineAudioReceivedAt = null;
+    this.addLog("info", `Starting benchmark run ${runId}`);
     this.patch({
       status: "recording",
       currentRun: {
@@ -192,8 +207,10 @@ export class BenchmarkController {
       onPartialTranscript: (text) => {
         if (this.activeRunId !== runId) return;
         this.updateCurrentRun({ partialTranscript: text });
+        this.addLog("info", `Moonshine partial: "${text}"`);
       },
       onFinalTranscript: (finalTranscript) => {
+        this.addLog("info", `Moonshine final: "${finalTranscript.text}"`);
         void this.handleMoonshineFinal(runId, finalTranscript.text, {
           lineId: finalTranscript.lineId,
           sttCompletionTimeMs: finalTranscript.sttCompletionTimeMs,
@@ -203,6 +220,7 @@ export class BenchmarkController {
         if (this.activeRunId !== runId) return;
         this.updateCurrentRun({ error: error.message, status: "error" });
         this.patch({ status: "error" });
+        this.addLog("error", `Moonshine error: ${error.message}`);
       },
     };
 
@@ -213,6 +231,7 @@ export class BenchmarkController {
         onChunk: (chunk) => {
           if (this.activeRunId === runId && this.moonshineAudioReceivedAt === null) {
             this.moonshineAudioReceivedAt = this.dependencies.now();
+            this.addLog("info", "First audio chunk received");
           }
           this.moonshineSession?.acceptAudio(chunk);
         },
@@ -227,10 +246,13 @@ export class BenchmarkController {
         onError: (error) => {
           if (this.activeRunId === runId) {
             this.updateCurrentRun({ error: error.message, status: "error" });
+            this.addLog("error", `Microphone error: ${error.message}`);
           }
         },
       });
+      this.addLog("info", "Microphone capture started");
       this.timeoutId = this.dependencies.setTimeout(() => {
+        this.addLog("warn", "Auto-stopping benchmark after 15 seconds");
         void this.stop();
       }, 15_000);
     } catch (error) {
@@ -241,6 +263,7 @@ export class BenchmarkController {
       this.moonshineAudioReceivedAt = null;
       this.updateCurrentRun({ error: errorMessage(error), status: "error" });
       this.patch({ status: "error" });
+      this.addLog("error", `Failed to start benchmark: ${errorMessage(error)}`);
       throw error;
     }
   }
@@ -258,6 +281,7 @@ export class BenchmarkController {
         status: "complete",
       });
       this.patch({ status: "complete" });
+      this.addLog("warn", "Stopped before Moonshine returned a final transcript");
     }
   }
 
@@ -277,7 +301,9 @@ export class BenchmarkController {
       currentRun: null,
       history: [],
       summary: summarizeBenchmarkHistory([]),
+      diagnosticLogs: [],
     });
+    this.addLog("info", "Reset benchmark state");
   }
 
   private async handleMoonshineFinal(
@@ -310,6 +336,7 @@ export class BenchmarkController {
 
     this.updateCurrentRun({ moonshine: result, partialTranscript: "" });
     if (pcm.length === 0) {
+      this.addLog("warn", "No captured PCM audio was available for Whisper");
       this.completeRunIfReady(true);
       return;
     }
@@ -317,6 +344,7 @@ export class BenchmarkController {
     const whisperReady = await this.ensureWhisperReady();
     if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
     if (!whisperReady) {
+      this.addLog("error", "Whisper was not ready; completing Moonshine-only run");
       this.completeRunIfReady(true);
       return;
     }
@@ -339,6 +367,7 @@ export class BenchmarkController {
 
     this.updateCurrentRun({ stoppedAt, status: "transcribing" });
     this.patch({ status: "transcribing", inputVolume: 0, inputPeakVolume: 0 });
+    this.addLog("info", `Microphone capture stopped (${pcm.length} PCM samples)`);
 
     return pcm;
   }
@@ -351,6 +380,7 @@ export class BenchmarkController {
       whisperError: null,
       whisperProgress: null,
     });
+    this.addLog("info", "Loading Whisper model");
 
     try {
       await this.dependencies.whisper.initialize({
@@ -359,12 +389,14 @@ export class BenchmarkController {
         },
       });
       this.patch({ whisperStatus: "ready", whisperError: null });
+      this.addLog("info", "Whisper model ready");
       return true;
     } catch (error) {
       this.patch({
         whisperStatus: "error",
         whisperError: errorMessage(error),
       });
+      this.addLog("error", `Whisper model failed: ${errorMessage(error)}`);
       return false;
     }
   }
@@ -374,6 +406,7 @@ export class BenchmarkController {
 
     try {
       const modelAudioReceivedAt = this.dependencies.now();
+      this.addLog("info", "Sending captured audio to Whisper");
       const whisperResult = await this.dependencies.whisper.transcribe(pcm, runId);
       if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
       const modelResultReadyAt = this.dependencies.now();
@@ -392,10 +425,12 @@ export class BenchmarkController {
         now: this.dependencies.now,
       });
       this.updateCurrentRun({ whisper: result });
+      this.addLog("info", `Whisper final: "${whisperResult.text}"`);
       this.completeRunIfReady(true);
     } catch (error) {
       if (this.activeRunId !== runId) return;
       this.updateCurrentRun({ error: errorMessage(error), status: "error" });
+      this.addLog("error", `Whisper error: ${errorMessage(error)}`);
       this.completeRunIfReady(true);
     }
   }
@@ -431,6 +466,19 @@ export class BenchmarkController {
         ...this.snapshot.currentRun,
         ...patch,
       },
+    });
+  }
+
+  private addLog(level: DiagnosticLogLevel, message: string): void {
+    const at = this.dependencies.now();
+    const entry: DiagnosticLogEntry = {
+      id: `log-${at}-${this.snapshot.diagnosticLogs.length}`,
+      at,
+      level,
+      message,
+    };
+    this.patch({
+      diagnosticLogs: [...this.snapshot.diagnosticLogs, entry].slice(-80),
     });
   }
 

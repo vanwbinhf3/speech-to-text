@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BenchmarkControls } from "./components/BenchmarkControls";
 import { BenchmarkHistory } from "./components/BenchmarkHistory";
+import { DiagnosticLogPanel } from "./components/DiagnosticLogPanel";
 import { ModelComparison } from "./components/ModelComparison";
 import { ModelStatusPanel } from "./components/ModelStatusPanel";
 import { PageOptions } from "./components/PageOptions";
@@ -113,6 +114,8 @@ export default function App() {
         moonshine={snapshot.currentRun?.moonshine ?? null}
         whisper={snapshot.currentRun?.whisper ?? null}
       />
+
+      <DiagnosticLogPanel logs={snapshot.diagnosticLogs} />
 
       <BenchmarkHistory history={snapshot.history} />
 

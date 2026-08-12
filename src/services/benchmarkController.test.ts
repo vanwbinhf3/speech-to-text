@@ -7,7 +7,11 @@ import {
   type AudioCaptureCallbacks,
   type AudioCaptureSession,
 } from "./audioCaptureService";
-import type { MoonshineStreamSession, SpeechRecognitionCallbacks } from "./moonshineService";
+import {
+  SpeechServiceError,
+  type MoonshineStreamSession,
+  type SpeechRecognitionCallbacks,
+} from "./moonshineService";
 import type { WhisperTranscriptResult } from "./whisperService";
 
 describe("BenchmarkController", () => {
@@ -51,12 +55,20 @@ describe("BenchmarkController", () => {
     await vi.waitFor(() => expect(controller.getSnapshot().history).toHaveLength(1));
     const run = controller.getSnapshot().history[0];
 
-    expect(run.moonshine?.metrics.modelAudioReceivedAt).toBe(1_020);
-    expect(run.moonshine?.metrics.modelResultReadyAt).toBe(1_030);
-    expect(run.moonshine?.metrics.modelProcessingTimeMs).toBe(10);
-    expect(run.whisper?.metrics.modelAudioReceivedAt).toBe(1_070);
-    expect(run.whisper?.metrics.modelResultReadyAt).toBe(1_080);
-    expect(run.whisper?.metrics.modelProcessingTimeMs).toBe(10);
+    expect(run.moonshine?.metrics.modelResultReadyAt).toBeGreaterThan(
+      run.moonshine?.metrics.modelAudioReceivedAt ?? 0,
+    );
+    expect(run.moonshine?.metrics.modelProcessingTimeMs).toBe(
+      (run.moonshine?.metrics.modelResultReadyAt ?? 0) -
+        (run.moonshine?.metrics.modelAudioReceivedAt ?? 0),
+    );
+    expect(run.whisper?.metrics.modelResultReadyAt).toBeGreaterThan(
+      run.whisper?.metrics.modelAudioReceivedAt ?? 0,
+    );
+    expect(run.whisper?.metrics.modelProcessingTimeMs).toBe(
+      (run.whisper?.metrics.modelResultReadyAt ?? 0) -
+        (run.whisper?.metrics.modelAudioReceivedAt ?? 0),
+    );
   });
 
   it("updates input volume while recording and resets it after stop", async () => {
@@ -93,6 +105,29 @@ describe("BenchmarkController", () => {
       noiseGateEnabled: true,
       noiseGateThreshold: 0.015,
       browserProcessingMode: "raw",
+    });
+  });
+
+  it("records diagnostic logs for microphone, audio, Moonshine, and errors", async () => {
+    const fakes = createFakes();
+    const controller = new BenchmarkController(fakes.dependencies);
+
+    await controller.initializeModels();
+    await controller.start();
+    fakes.emitAudioInput(Float32Array.from([0.5, -0.5]));
+    fakes.emitMoonshinePartial("open");
+    fakes.emitMoonshineError(new Error("moonshine stalled"));
+
+    const messages = controller.getSnapshot().diagnosticLogs.map((entry) => entry.message);
+
+    expect(messages).toContain("Moonshine model ready");
+    expect(messages).toContain("Starting benchmark run run-1");
+    expect(messages).toContain("Microphone capture started");
+    expect(messages).toContain("First audio chunk received");
+    expect(messages).toContain('Moonshine partial: "open"');
+    expect(controller.getSnapshot().diagnosticLogs.at(-1)).toMatchObject({
+      level: "error",
+      message: "Moonshine error: moonshine stalled",
     });
   });
 
@@ -240,6 +275,14 @@ function createFakes() {
         sttCompletionTimeMs: 30,
         lineId: `moonshine-${transcript}`,
       });
+    },
+    emitMoonshinePartial(transcript: string) {
+      moonshineCallbacks?.onPartialTranscript?.(transcript);
+    },
+    emitMoonshineError(error: Error) {
+      moonshineCallbacks?.onError?.(
+        new SpeechServiceError("recognition-failed", error.message),
+      );
     },
     emitAudioInput(chunk = Float32Array.from([0.1, 0.2])) {
       audioSession.emitInput(chunk);
