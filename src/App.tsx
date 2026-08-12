@@ -120,7 +120,7 @@ export default function App() {
       <BenchmarkHistory history={snapshot.history} />
 
       <footer>
-        Moonshine disabled temporarily · Whisper.cpp tiny.en Q5_1 · Local benchmark
+        Moonshine disabled temporarily · Whisper.cpp base.en Q5_1 · Local benchmark
       </footer>
     </main>
   );

@@ -9,7 +9,7 @@ describe("WhisperService", () => {
 
     const first = service.initialize();
     const second = service.initialize();
-    worker.emit({ type: "ready", loadTimeMs: 123, modelSizeBytes: 32_166_155 });
+    worker.emit({ type: "ready", loadTimeMs: 123, modelSizeBytes: 59_721_011 });
 
     await Promise.all([first, second]);
 
@@ -21,7 +21,7 @@ describe("WhisperService", () => {
     const worker = new FakeWhisperWorker();
     const service = new WhisperService(() => worker);
     const initialization = service.initialize();
-    worker.emit({ type: "ready", loadTimeMs: 123, modelSizeBytes: 32_166_155 });
+    worker.emit({ type: "ready", loadTimeMs: 123, modelSizeBytes: 59_721_011 });
     await initialization;
 
     const first = service.transcribe(Float32Array.from([0.1]), "first");
@@ -65,7 +65,7 @@ describe("WhisperService", () => {
     worker.emit({
       type: "progress",
       fraction: 0.5,
-      file: "ggml-tiny.en-q5_1.bin",
+      file: "ggml-base.en-q5_1.bin",
       loaded: 16,
       total: 32,
     });
@@ -74,7 +74,7 @@ describe("WhisperService", () => {
 
     expect(onProgress).toHaveBeenCalledWith({
       fraction: 0.5,
-      file: "ggml-tiny.en-q5_1.bin",
+      file: "ggml-base.en-q5_1.bin",
       loaded: 16,
       total: 32,
     });

@@ -3,7 +3,7 @@
 A browser-only technical proof of concept for English speech-to-text plus local
 voice navigation intent detection. Moonshine is temporarily disabled in the
 runtime flow. The demo captures microphone audio locally, then sends the
-completed audio buffer to Whisper.cpp tiny.en Q5_1 for speech-to-text.
+completed audio buffer to Whisper.cpp base.en Q5_1 for speech-to-text.
 
 No Web Speech API, backend, cloud STT API, OpenAI API, Google Speech API,
 AssemblyAI, database, authentication, or LLM intent detection is used.
@@ -25,7 +25,7 @@ npm install
 
 - Moonshine Tiny Streaming English assets in `public/models/tiny-streaming-en`
 - whisper.cpp browser runtime `main.js`
-- Whisper model `ggml-tiny.en-q5_1.bin` in `public/models/whisper-tiny-en-q5_1`
+- Whisper model `ggml-base.en-q5_1.bin` in `public/models/whisper-base-en-q5_1`
 
 Valid files are reused on later installs. Generated model directories are
 excluded from Git.
@@ -59,7 +59,7 @@ Microphone
     |
 Shared 16 kHz mono PCM capture
     |
-Send full captured PCM buffer to Whisper.cpp tiny.en Q5_1
+Send full captured PCM buffer to Whisper.cpp base.en Q5_1
     |
 Whisper transcript
     |

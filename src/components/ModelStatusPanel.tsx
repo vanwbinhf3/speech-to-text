@@ -37,7 +37,7 @@ export function ModelStatusPanel({
           detail={moonshineError ?? "Temporarily disabled for Whisper-only testing"}
         />
         <ModelStatusCard
-          name="Whisper.cpp tiny.en Q5_1"
+          name="Whisper.cpp base.en Q5_1"
           status={whisperStatus}
           detail={
             whisperError ??
