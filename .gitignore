@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+public/models/tiny-streaming-en/
+public/models/whisper-tiny-en-q5_1/
+*.tsbuildinfo
+vite-dev*.log
+*.local

@@ -1,0 +1,28 @@
+{
+  "name": "moonshine-voice-navigation-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "download:model": "node scripts/download-model.mjs",
+    "postinstall": "npm run download:model"
+  },
+  "dependencies": {
+    "@moonshine-ai/moonshine-wasm": "0.1.1",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest"
+  }
+}
