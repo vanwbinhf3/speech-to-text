@@ -1,0 +1,1092 @@
+{
+  "generatedAt": "2026-08-14T03:04:57.165Z",
+  "corpus": [
+    {
+      "id": "cmd-01",
+      "text": "open the dashboard",
+      "expectedPageId": "dashboard"
+    },
+    {
+      "id": "cmd-02",
+      "text": "can you show me the dashboard",
+      "expectedPageId": "dashboard"
+    },
+    {
+      "id": "cmd-03",
+      "text": "take me to the main dashboard",
+      "expectedPageId": "dashboard"
+    },
+    {
+      "id": "cmd-04",
+      "text": "I want to see my home dashboard",
+      "expectedPageId": "dashboard"
+    },
+    {
+      "id": "cmd-05",
+      "text": "open projects",
+      "expectedPageId": "projects"
+    },
+    {
+      "id": "cmd-06",
+      "text": "show me my projects",
+      "expectedPageId": "projects"
+    },
+    {
+      "id": "cmd-07",
+      "text": "navigate to the project page",
+      "expectedPageId": "projects"
+    },
+    {
+      "id": "cmd-08",
+      "text": "open my tasks",
+      "expectedPageId": "tasks"
+    },
+    {
+      "id": "cmd-09",
+      "text": "show me the task list",
+      "expectedPageId": "tasks"
+    },
+    {
+      "id": "cmd-10",
+      "text": "could you take me to tasks",
+      "expectedPageId": "tasks"
+    },
+    {
+      "id": "cmd-11",
+      "text": "open workload",
+      "expectedPageId": "workload"
+    },
+    {
+      "id": "cmd-12",
+      "text": "show my workload dashboard",
+      "expectedPageId": "workload"
+    },
+    {
+      "id": "cmd-13",
+      "text": "I want to check employee workload",
+      "expectedPageId": "workload"
+    },
+    {
+      "id": "cmd-14",
+      "text": "take me to the team workload",
+      "expectedPageId": "workload"
+    },
+    {
+      "id": "cmd-15",
+      "text": "open employees",
+      "expectedPageId": "employees"
+    },
+    {
+      "id": "cmd-16",
+      "text": "show me the employee list",
+      "expectedPageId": "employees"
+    },
+    {
+      "id": "cmd-17",
+      "text": "go to the team members page",
+      "expectedPageId": "employees"
+    },
+    {
+      "id": "cmd-18",
+      "text": "open analytics",
+      "expectedPageId": "analytics"
+    },
+    {
+      "id": "cmd-19",
+      "text": "show the performance analytics",
+      "expectedPageId": "analytics"
+    },
+    {
+      "id": "cmd-20",
+      "text": "take me to the reports dashboard",
+      "expectedPageId": "analytics"
+    },
+    {
+      "id": "cmd-21",
+      "text": "open settings",
+      "expectedPageId": "settings"
+    },
+    {
+      "id": "cmd-22",
+      "text": "go to application settings",
+      "expectedPageId": "settings"
+    },
+    {
+      "id": "cmd-23",
+      "text": "show me the app settings",
+      "expectedPageId": "settings"
+    },
+    {
+      "id": "cmd-24",
+      "text": "open integrations",
+      "expectedPageId": "integrations"
+    },
+    {
+      "id": "cmd-25",
+      "text": "show the GitHub integration",
+      "expectedPageId": "integrations"
+    },
+    {
+      "id": "cmd-26",
+      "text": "navigate to OpenProject integration",
+      "expectedPageId": "integrations"
+    },
+    {
+      "id": "cmd-27",
+      "text": "what time is the meeting today",
+      "expectedPageId": null
+    },
+    {
+      "id": "cmd-28",
+      "text": "please turn up the music",
+      "expectedPageId": null
+    },
+    {
+      "id": "cmd-29",
+      "text": "I do not know what I should do today",
+      "expectedPageId": null
+    },
+    {
+      "id": "cmd-30",
+      "text": "tell me about the weather tomorrow",
+      "expectedPageId": null
+    }
+  ],
+  "observations": [
+    {
+      "commandId": "cmd-01",
+      "model": "small-streaming",
+      "expectedTranscript": "open the dashboard",
+      "transcript": "Open the dashboard.",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 2081.265000000596,
+      "error": null
+    },
+    {
+      "commandId": "cmd-02",
+      "model": "small-streaming",
+      "expectedTranscript": "can you show me the dashboard",
+      "transcript": "Can you show me the dashboard?",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 2912.265000000596,
+      "error": null
+    },
+    {
+      "commandId": "cmd-03",
+      "model": "small-streaming",
+      "expectedTranscript": "take me to the main dashboard",
+      "transcript": "Take me to the main dashboard",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 2888.2849999964237,
+      "error": null
+    },
+    {
+      "commandId": "cmd-04",
+      "model": "small-streaming",
+      "expectedTranscript": "I want to see my home dashboard",
+      "transcript": "I want to see my home dashboard",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 3870.9899999946356,
+      "error": null
+    },
+    {
+      "commandId": "cmd-05",
+      "model": "small-streaming",
+      "expectedTranscript": "open projects",
+      "transcript": "Open projects",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 1924.6349999904633,
+      "error": null
+    },
+    {
+      "commandId": "cmd-06",
+      "model": "small-streaming",
+      "expectedTranscript": "show me my projects",
+      "transcript": "Show me my projects",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 2777.375,
+      "error": null
+    },
+    {
+      "commandId": "cmd-07",
+      "model": "small-streaming",
+      "expectedTranscript": "navigate to the project page",
+      "transcript": "Navigate to the project page.",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 3724.469999998808,
+      "error": null
+    },
+    {
+      "commandId": "cmd-08",
+      "model": "small-streaming",
+      "expectedTranscript": "open my tasks",
+      "transcript": "Open my tasks.",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 2029.5550000071526,
+      "error": null
+    },
+    {
+      "commandId": "cmd-09",
+      "model": "small-streaming",
+      "expectedTranscript": "show me the task list",
+      "transcript": "Show me the task list",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 2779.6000000089407,
+      "error": null
+    },
+    {
+      "commandId": "cmd-10",
+      "model": "small-streaming",
+      "expectedTranscript": "could you take me to tasks",
+      "transcript": "Could you take me to tasks?",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 2899.0900000035763,
+      "error": null
+    },
+    {
+      "commandId": "cmd-11",
+      "model": "small-streaming",
+      "expectedTranscript": "open workload",
+      "transcript": "Open workload",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 1936.5099999904633,
+      "error": null
+    },
+    {
+      "commandId": "cmd-12",
+      "model": "small-streaming",
+      "expectedTranscript": "show my workload dashboard",
+      "transcript": "Show my workload dashboard",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 3627.0999999940395,
+      "error": null
+    },
+    {
+      "commandId": "cmd-13",
+      "model": "small-streaming",
+      "expectedTranscript": "I want to check employee workload",
+      "transcript": "I want to check employee workload",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 3820.045000001788,
+      "error": null
+    },
+    {
+      "commandId": "cmd-14",
+      "model": "small-streaming",
+      "expectedTranscript": "take me to the team workload",
+      "transcript": "Take me to the team workload",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 2849.8649999946356,
+      "error": null
+    },
+    {
+      "commandId": "cmd-15",
+      "model": "small-streaming",
+      "expectedTranscript": "open employees",
+      "transcript": "Open employees.",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 1942.4949999898672,
+      "error": null
+    },
+    {
+      "commandId": "cmd-16",
+      "model": "small-streaming",
+      "expectedTranscript": "show me the employee list",
+      "transcript": "Show me the employee list",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 2759.079999998212,
+      "error": null
+    },
+    {
+      "commandId": "cmd-17",
+      "model": "small-streaming",
+      "expectedTranscript": "go to the team members page",
+      "transcript": "Go to the team members page",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 2845.3649999946356,
+      "error": null
+    },
+    {
+      "commandId": "cmd-18",
+      "model": "small-streaming",
+      "expectedTranscript": "open analytics",
+      "transcript": "Open analytics",
+      "expectedPageId": "analytics",
+      "detectedPageId": "analytics",
+      "latencyMs": 2005.8299999982119,
+      "error": null
+    },
+    {
+      "commandId": "cmd-19",
+      "model": "small-streaming",
+      "expectedTranscript": "show the performance analytics",
+      "transcript": "Show the performance analytics",
+      "expectedPageId": "analytics",
+      "detectedPageId": "analytics",
+      "latencyMs": 3584.3050000071526,
+      "error": null
+    },
+    {
+      "commandId": "cmd-20",
+      "model": "small-streaming",
+      "expectedTranscript": "take me to the reports dashboard",
+      "transcript": "Take me to the reports dashboard",
+      "expectedPageId": "analytics",
+      "detectedPageId": null,
+      "latencyMs": 3679.8250000029802,
+      "error": null
+    },
+    {
+      "commandId": "cmd-21",
+      "model": "small-streaming",
+      "expectedTranscript": "open settings",
+      "transcript": "Open settings",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 1908.1799999922514,
+      "error": null
+    },
+    {
+      "commandId": "cmd-22",
+      "model": "small-streaming",
+      "expectedTranscript": "go to application settings",
+      "transcript": "Go to application settings",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 3510.0499999970198,
+      "error": null
+    },
+    {
+      "commandId": "cmd-23",
+      "model": "small-streaming",
+      "expectedTranscript": "show me the app settings",
+      "transcript": "Show me the app settings.",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 2843.5900000035763,
+      "error": null
+    },
+    {
+      "commandId": "cmd-24",
+      "model": "small-streaming",
+      "expectedTranscript": "open integrations",
+      "transcript": "Open integrations",
+      "expectedPageId": "integrations",
+      "detectedPageId": "integrations",
+      "latencyMs": 2675.5550000071526,
+      "error": null
+    },
+    {
+      "commandId": "cmd-25",
+      "model": "small-streaming",
+      "expectedTranscript": "show the GitHub integration",
+      "transcript": "Show the Github integration.",
+      "expectedPageId": "integrations",
+      "detectedPageId": "integrations",
+      "latencyMs": 2838.7000000029802,
+      "error": null
+    },
+    {
+      "commandId": "cmd-26",
+      "model": "small-streaming",
+      "expectedTranscript": "navigate to OpenProject integration",
+      "transcript": "Navigate to open project integration",
+      "expectedPageId": "integrations",
+      "detectedPageId": null,
+      "latencyMs": 4596.464999988675,
+      "error": null
+    },
+    {
+      "commandId": "cmd-27",
+      "model": "small-streaming",
+      "expectedTranscript": "what time is the meeting today",
+      "transcript": "What time is the meeting today?",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 2872.1150000095367,
+      "error": null
+    },
+    {
+      "commandId": "cmd-28",
+      "model": "small-streaming",
+      "expectedTranscript": "please turn up the music",
+      "transcript": "Please turn up the music.",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 2761.1649999916553,
+      "error": null
+    },
+    {
+      "commandId": "cmd-29",
+      "model": "small-streaming",
+      "expectedTranscript": "I do not know what I should do today",
+      "transcript": "I do not know what I should do today.",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 3812.6800000071526,
+      "error": null
+    },
+    {
+      "commandId": "cmd-30",
+      "model": "small-streaming",
+      "expectedTranscript": "tell me about the weather tomorrow",
+      "transcript": "Tell me about the weather tomorrow",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 3645.2849999964237,
+      "error": null
+    },
+    {
+      "commandId": "cmd-01",
+      "model": "medium-streaming",
+      "expectedTranscript": "open the dashboard",
+      "transcript": "Open the dashboard",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 2252.5099999904633,
+      "error": null
+    },
+    {
+      "commandId": "cmd-02",
+      "model": "medium-streaming",
+      "expectedTranscript": "can you show me the dashboard",
+      "transcript": "Can you show me the dashboard?",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 3385,
+      "error": null
+    },
+    {
+      "commandId": "cmd-03",
+      "model": "medium-streaming",
+      "expectedTranscript": "take me to the main dashboard",
+      "transcript": "Take me to the main dashboard",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 3520.0700000077486,
+      "error": null
+    },
+    {
+      "commandId": "cmd-04",
+      "model": "medium-streaming",
+      "expectedTranscript": "I want to see my home dashboard",
+      "transcript": "I want to see my home dashboard",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 4457.239999994636,
+      "error": null
+    },
+    {
+      "commandId": "cmd-05",
+      "model": "medium-streaming",
+      "expectedTranscript": "open projects",
+      "transcript": "Open projects",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 2167.2450000047684,
+      "error": null
+    },
+    {
+      "commandId": "cmd-06",
+      "model": "medium-streaming",
+      "expectedTranscript": "show me my projects",
+      "transcript": "Show me my projects",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 3197.4950000047684,
+      "error": null
+    },
+    {
+      "commandId": "cmd-07",
+      "model": "medium-streaming",
+      "expectedTranscript": "navigate to the project page",
+      "transcript": "Navigate to the project page",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 4347.340000003576,
+      "error": null
+    },
+    {
+      "commandId": "cmd-08",
+      "model": "medium-streaming",
+      "expectedTranscript": "open my tasks",
+      "transcript": "Open my tasks",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 2241.9800000041723,
+      "error": null
+    },
+    {
+      "commandId": "cmd-09",
+      "model": "medium-streaming",
+      "expectedTranscript": "show me the task list",
+      "transcript": "Show me the task list",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 3210.515000000596,
+      "error": null
+    },
+    {
+      "commandId": "cmd-10",
+      "model": "medium-streaming",
+      "expectedTranscript": "could you take me to tasks",
+      "transcript": "Could you take me to tasks",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 3478.234999999404,
+      "error": null
+    },
+    {
+      "commandId": "cmd-11",
+      "model": "medium-streaming",
+      "expectedTranscript": "open workload",
+      "transcript": "Open workload",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 2176.204999998212,
+      "error": null
+    },
+    {
+      "commandId": "cmd-12",
+      "model": "medium-streaming",
+      "expectedTranscript": "show my workload dashboard",
+      "transcript": "Show my workload dashboard",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 4454.444999992847,
+      "error": null
+    },
+    {
+      "commandId": "cmd-13",
+      "model": "medium-streaming",
+      "expectedTranscript": "I want to check employee workload",
+      "transcript": "I want to check employee workload",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 4447.2750000059605,
+      "error": null
+    },
+    {
+      "commandId": "cmd-14",
+      "model": "medium-streaming",
+      "expectedTranscript": "take me to the team workload",
+      "transcript": "Take me to the team workload",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 3558.5900000035763,
+      "error": null
+    },
+    {
+      "commandId": "cmd-15",
+      "model": "medium-streaming",
+      "expectedTranscript": "open employees",
+      "transcript": "Open employees",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 2186.8400000035763,
+      "error": null
+    },
+    {
+      "commandId": "cmd-16",
+      "model": "medium-streaming",
+      "expectedTranscript": "show me the employee list",
+      "transcript": "Show me the employee list",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 3197.405000001192,
+      "error": null
+    },
+    {
+      "commandId": "cmd-17",
+      "model": "medium-streaming",
+      "expectedTranscript": "go to the team members page",
+      "transcript": "Go to the team members page",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 3308.4950000047684,
+      "error": null
+    },
+    {
+      "commandId": "cmd-18",
+      "model": "medium-streaming",
+      "expectedTranscript": "open analytics",
+      "transcript": "Open analytics",
+      "expectedPageId": "analytics",
+      "detectedPageId": "analytics",
+      "latencyMs": 2215.7450000047684,
+      "error": null
+    },
+    {
+      "commandId": "cmd-19",
+      "model": "medium-streaming",
+      "expectedTranscript": "show the performance analytics",
+      "transcript": "Show the performance analytics",
+      "expectedPageId": "analytics",
+      "detectedPageId": "analytics",
+      "latencyMs": 4138.265000000596,
+      "error": null
+    },
+    {
+      "commandId": "cmd-20",
+      "model": "medium-streaming",
+      "expectedTranscript": "take me to the reports dashboard",
+      "transcript": "Take me to the reports dashboard",
+      "expectedPageId": "analytics",
+      "detectedPageId": null,
+      "latencyMs": 4551.030000001192,
+      "error": null
+    },
+    {
+      "commandId": "cmd-21",
+      "model": "medium-streaming",
+      "expectedTranscript": "open settings",
+      "transcript": "Open settings",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 2149.780000001192,
+      "error": null
+    },
+    {
+      "commandId": "cmd-22",
+      "model": "medium-streaming",
+      "expectedTranscript": "go to application settings",
+      "transcript": "Go to application settings",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 4098.5400000065565,
+      "error": null
+    },
+    {
+      "commandId": "cmd-23",
+      "model": "medium-streaming",
+      "expectedTranscript": "show me the app settings",
+      "transcript": "Show me the app settings",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 3237.329999998212,
+      "error": null
+    },
+    {
+      "commandId": "cmd-24",
+      "model": "medium-streaming",
+      "expectedTranscript": "open integrations",
+      "transcript": "Open integrations",
+      "expectedPageId": "integrations",
+      "detectedPageId": "integrations",
+      "latencyMs": 3037.4249999970198,
+      "error": null
+    },
+    {
+      "commandId": "cmd-25",
+      "model": "medium-streaming",
+      "expectedTranscript": "show the GitHub integration",
+      "transcript": "Show the github integration",
+      "expectedPageId": "integrations",
+      "detectedPageId": "integrations",
+      "latencyMs": 3228.5700000077486,
+      "error": null
+    },
+    {
+      "commandId": "cmd-26",
+      "model": "medium-streaming",
+      "expectedTranscript": "navigate to OpenProject integration",
+      "transcript": "Navigate to open project integration",
+      "expectedPageId": "integrations",
+      "detectedPageId": null,
+      "latencyMs": 6045.490000009537,
+      "error": null
+    },
+    {
+      "commandId": "cmd-27",
+      "model": "medium-streaming",
+      "expectedTranscript": "what time is the meeting today",
+      "transcript": "What time is the meeting today",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 3992.8250000029802,
+      "error": null
+    },
+    {
+      "commandId": "cmd-28",
+      "model": "medium-streaming",
+      "expectedTranscript": "please turn up the music",
+      "transcript": "Please turn up the music",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 3669.5199999958277,
+      "error": null
+    },
+    {
+      "commandId": "cmd-29",
+      "model": "medium-streaming",
+      "expectedTranscript": "I do not know what I should do today",
+      "transcript": "I do not know what I should do today.",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 5931.515000000596,
+      "error": null
+    },
+    {
+      "commandId": "cmd-30",
+      "model": "medium-streaming",
+      "expectedTranscript": "tell me about the weather tomorrow",
+      "transcript": "Tell me about the weather tomorrow",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 5911.219999998808,
+      "error": null
+    },
+    {
+      "commandId": "cmd-01",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open the dashboard",
+      "transcript": "Open the dashboard.",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 18367.75,
+      "error": null
+    },
+    {
+      "commandId": "cmd-02",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "can you show me the dashboard",
+      "transcript": "Can you show me the dashboard?",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 5553.5849999934435,
+      "error": null
+    },
+    {
+      "commandId": "cmd-03",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "take me to the main dashboard",
+      "transcript": "Take me to the main dashboard.",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 5397.659999996424,
+      "error": null
+    },
+    {
+      "commandId": "cmd-04",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "I want to see my home dashboard",
+      "transcript": "I want to see my home dashboard.",
+      "expectedPageId": "dashboard",
+      "detectedPageId": "dashboard",
+      "latencyMs": 6028.590000003576,
+      "error": null
+    },
+    {
+      "commandId": "cmd-05",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open projects",
+      "transcript": "Open Projects",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 5701.744999989867,
+      "error": null
+    },
+    {
+      "commandId": "cmd-06",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "show me my projects",
+      "transcript": "Show me my projects.",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 5673.644999995828,
+      "error": null
+    },
+    {
+      "commandId": "cmd-07",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "navigate to the project page",
+      "transcript": "Navigate to the project page.",
+      "expectedPageId": "projects",
+      "detectedPageId": "projects",
+      "latencyMs": 7359.234999999404,
+      "error": null
+    },
+    {
+      "commandId": "cmd-08",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open my tasks",
+      "transcript": "Open my tasks.",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 6935.109999999404,
+      "error": null
+    },
+    {
+      "commandId": "cmd-09",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "show me the task list",
+      "transcript": "Show me the task list.",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 5948.754999995232,
+      "error": null
+    },
+    {
+      "commandId": "cmd-10",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "could you take me to tasks",
+      "transcript": "Could you take me to tasks?",
+      "expectedPageId": "tasks",
+      "detectedPageId": "tasks",
+      "latencyMs": 5729.300000011921,
+      "error": null
+    },
+    {
+      "commandId": "cmd-11",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open workload",
+      "transcript": "Open workload.",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 5437.930000007153,
+      "error": null
+    },
+    {
+      "commandId": "cmd-12",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "show my workload dashboard",
+      "transcript": "Show my workload dashboard.",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 5525.534999996424,
+      "error": null
+    },
+    {
+      "commandId": "cmd-13",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "I want to check employee workload",
+      "transcript": "I want to check employee workload.",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 5355.444999992847,
+      "error": null
+    },
+    {
+      "commandId": "cmd-14",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "take me to the team workload",
+      "transcript": "Take me to the team workload.",
+      "expectedPageId": "workload",
+      "detectedPageId": "workload",
+      "latencyMs": 5250.5849999934435,
+      "error": null
+    },
+    {
+      "commandId": "cmd-15",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open employees",
+      "transcript": "Open employees.",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 5295.519999995828,
+      "error": null
+    },
+    {
+      "commandId": "cmd-16",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "show me the employee list",
+      "transcript": "Show me the employee list.",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 5433.82500000298,
+      "error": null
+    },
+    {
+      "commandId": "cmd-17",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "go to the team members page",
+      "transcript": "Go to the team members page.",
+      "expectedPageId": "employees",
+      "detectedPageId": "employees",
+      "latencyMs": 5401.79999999702,
+      "error": null
+    },
+    {
+      "commandId": "cmd-18",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open analytics",
+      "transcript": "Open Analytics",
+      "expectedPageId": "analytics",
+      "detectedPageId": "analytics",
+      "latencyMs": 5459.019999995828,
+      "error": null
+    },
+    {
+      "commandId": "cmd-19",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "show the performance analytics",
+      "transcript": "Show the performance analytics.",
+      "expectedPageId": "analytics",
+      "detectedPageId": "analytics",
+      "latencyMs": 5331.934999987483,
+      "error": null
+    },
+    {
+      "commandId": "cmd-20",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "take me to the reports dashboard",
+      "transcript": "Take me to the reports dashboard.",
+      "expectedPageId": "analytics",
+      "detectedPageId": null,
+      "latencyMs": 5274.0400000065565,
+      "error": null
+    },
+    {
+      "commandId": "cmd-21",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open settings",
+      "transcript": "Open Settings",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 5716.2900000065565,
+      "error": null
+    },
+    {
+      "commandId": "cmd-22",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "go to application settings",
+      "transcript": "Go to Application Settings",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 5435.344999998808,
+      "error": null
+    },
+    {
+      "commandId": "cmd-23",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "show me the app settings",
+      "transcript": "Show me the app settings.",
+      "expectedPageId": "settings",
+      "detectedPageId": "settings",
+      "latencyMs": 5384.435000002384,
+      "error": null
+    },
+    {
+      "commandId": "cmd-24",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "open integrations",
+      "transcript": "Open integrations.",
+      "expectedPageId": "integrations",
+      "detectedPageId": "integrations",
+      "latencyMs": 5179.515000000596,
+      "error": null
+    },
+    {
+      "commandId": "cmd-25",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "show the GitHub integration",
+      "transcript": "Show the GitHub integration.",
+      "expectedPageId": "integrations",
+      "detectedPageId": "integrations",
+      "latencyMs": 5226.430000007153,
+      "error": null
+    },
+    {
+      "commandId": "cmd-26",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "navigate to OpenProject integration",
+      "transcript": "Navigate to Open Project Integration.",
+      "expectedPageId": "integrations",
+      "detectedPageId": null,
+      "latencyMs": 5421.935000002384,
+      "error": null
+    },
+    {
+      "commandId": "cmd-27",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "what time is the meeting today",
+      "transcript": "What time is the meeting today?",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 5285.369999989867,
+      "error": null
+    },
+    {
+      "commandId": "cmd-28",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "please turn up the music",
+      "transcript": "Please turn up the music.",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 5579.629999995232,
+      "error": null
+    },
+    {
+      "commandId": "cmd-29",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "I do not know what I should do today",
+      "transcript": "I do not know what I should do today.",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 5338.644999995828,
+      "error": null
+    },
+    {
+      "commandId": "cmd-30",
+      "model": "whisper-base-en-q5_1",
+      "expectedTranscript": "tell me about the weather tomorrow",
+      "transcript": "Tell me about the weather tomorrow.",
+      "expectedPageId": null,
+      "detectedPageId": null,
+      "latencyMs": 5324.314999997616,
+      "error": null
+    }
+  ],
+  "summaries": {
+    "small-streaming": {
+      "runs": 30,
+      "successfulRuns": 30,
+      "failures": 0,
+      "exactMatchRate": 0.9666666666666667,
+      "averageWer": 0.016666666666666666,
+      "intentAccuracy": 0.9333333333333333,
+      "unknownFalsePositiveRate": 0.0,
+      "medianLatencyMs": 2847.6149999946356,
+      "p95LatencyMs": 3870.9899999946356
+    },
+    "medium-streaming": {
+      "runs": 30,
+      "successfulRuns": 30,
+      "failures": 0,
+      "exactMatchRate": 0.9666666666666667,
+      "averageWer": 0.016666666666666666,
+      "intentAccuracy": 0.9333333333333333,
+      "unknownFalsePositiveRate": 0.0,
+      "medianLatencyMs": 3431.617499999702,
+      "p95LatencyMs": 5931.515000000596
+    },
+    "whisper-base-en-q5_1": {
+      "runs": 30,
+      "successfulRuns": 30,
+      "failures": 0,
+      "exactMatchRate": 0.9666666666666667,
+      "averageWer": 0.016666666666666666,
+      "intentAccuracy": 0.9333333333333333,
+      "unknownFalsePositiveRate": 0.0,
+      "medianLatencyMs": 5434.585000000894,
+      "p95LatencyMs": 7359.234999999404
+    }
+  }
+}
