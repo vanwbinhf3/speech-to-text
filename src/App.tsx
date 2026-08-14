@@ -46,7 +46,7 @@ export default function App() {
         <div className="hero-mark" aria-hidden="true">STT</div>
         <div>
           <p className="eyebrow">Technical proof of concept</p>
-          <h1>Moonshine v2 Voice Navigation Benchmark</h1>
+          <h1>Browser ASR Voice Navigation Benchmark</h1>
           <p className="hero-copy">
             Speak a short English navigation command. The browser streams local
             microphone audio into the selected Moonshine Tiny, Small, or Medium model,
