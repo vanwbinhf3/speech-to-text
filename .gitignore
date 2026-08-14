@@ -3,6 +3,8 @@ dist/
 coverage/
 public/models/tiny-streaming-en/
 public/models/whisper-tiny-en-q5_1/
+public/models/whisper-base-en-q5_1/
+.tmp-whisper-check/
 *.tsbuildinfo
 vite-dev*.log
 *.local

@@ -30,7 +30,7 @@ const whisperTargetDirectory = join(
   "..",
   "public",
   "models",
-  "whisper-tiny-en-q5_1",
+  "whisper-base-en-q5_1",
 );
 
 const whisperFiles = [
@@ -49,10 +49,10 @@ const whisperFiles = [
     ],
   },
   {
-    name: "ggml-tiny.en-q5_1.bin",
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin",
-    size: 32_166_155,
-    sha256: "c77c5766f1cef09b6b7d47f21b546cbddd4157886b3b5d6d4f709e91e66c7c2b",
+    name: "ggml-base.en-q5_1.bin",
+    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin",
+    size: 59_721_011,
+    sha256: "4baf70dd0d7c4247ba2b81fafd9c01005ac77c2f9ef064e00dcf195d0e2fdd2f",
   },
 ];
 
@@ -220,4 +220,4 @@ for (const file of whisperFiles) {
   await downloadVerifiedAsset(file, whisperTargetDirectory, "Whisper");
 }
 
-console.log("[Whisper] tiny.en Q5_1 model and runtime assets are ready");
+console.log("[Whisper] base.en Q5_1 model and runtime assets are ready");

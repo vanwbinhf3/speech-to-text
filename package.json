@@ -7,9 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "download:model": "node scripts/download-model.mjs",
-    "postinstall": "npm run download:model"
+    "test": "vitest run"
   },
   "dependencies": {
     "@moonshine-ai/moonshine-wasm": "0.1.1",

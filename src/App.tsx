@@ -11,6 +11,7 @@ import {
   BenchmarkController,
   type BenchmarkSnapshot,
 } from "./services/benchmarkController";
+import { MOONSHINE_MODELS } from "./services/moonshineService";
 
 const benchmarkController = new BenchmarkController();
 
@@ -33,29 +34,24 @@ export default function App() {
   const running =
     snapshot.status === "recording" || snapshot.status === "transcribing";
   const canStart =
-    snapshot.whisperStatus === "ready" && snapshot.status !== "loading-models";
-
-  const detectedPages = useMemo(
-    () => ({
-      moonshine: snapshot.currentRun?.moonshine?.intent.pageId ?? null,
-      whisper: snapshot.currentRun?.whisper?.intent.pageId ?? null,
-    }),
+    snapshot.moonshineStatus === "ready" && snapshot.status !== "loading-models";
+  const detectedPageId = useMemo(
+    () => snapshot.currentRun?.moonshine?.intent.pageId ?? null,
     [snapshot.currentRun],
   );
 
   return (
     <main className="app-shell">
       <header className="hero">
-        <div className="hero-mark" aria-hidden="true">
-          STT
-        </div>
+        <div className="hero-mark" aria-hidden="true">STT</div>
         <div>
           <p className="eyebrow">Technical proof of concept</p>
-          <h1>Whisper Voice Navigation Benchmark</h1>
+          <h1>Moonshine v2 Voice Navigation Benchmark</h1>
           <p className="hero-copy">
-            Speak a short English navigation command. The browser captures your
-            microphone audio locally, then sends the captured buffer to
-            Whisper.cpp for speech-to-text and intent matching.
+            Speak a short English navigation command. The browser streams local
+            microphone audio into the selected Moonshine Tiny, Small, or Medium model,
+            then sends the same buffered recording to Whisper Base.en for a
+            sequential comparison without an LLM.
           </p>
         </div>
         <div className="privacy-pill">
@@ -69,25 +65,30 @@ export default function App() {
             <strong>Speech Recognition Error</strong>
             <p>{snapshot.moonshineError ?? snapshot.whisperError}</p>
           </div>
-          <button type="button" onClick={() => void initializeModels()}>
-            Retry
-          </button>
+          {snapshot.moonshineError ? (
+            <button type="button" onClick={() => void initializeModels()}>
+              Retry
+            </button>
+          ) : (
+            <span>Whisper will retry after the next Moonshine result.</span>
+          )}
         </section>
       )}
 
       <ModelStatusPanel
+        selectedModel={snapshot.selectedModel}
         moonshineStatus={snapshot.moonshineStatus}
-        whisperStatus={snapshot.whisperStatus}
         moonshineError={snapshot.moonshineError}
+        moonshineProgress={snapshot.moonshineProgress}
+        whisperStatus={snapshot.whisperStatus}
         whisperError={snapshot.whisperError}
         whisperProgress={snapshot.whisperProgress}
+        selectionDisabled={running}
+        onModelChange={(variant) => void benchmarkController.selectModel(variant)}
         onRetry={() => void initializeModels()}
       />
 
-      <PageOptions
-        moonshinePageId={detectedPages.moonshine}
-        whisperPageId={detectedPages.whisper}
-      />
+      <PageOptions moonshinePageId={detectedPageId} />
 
       <div className="main-grid">
         <BenchmarkControls
@@ -114,13 +115,11 @@ export default function App() {
         moonshine={snapshot.currentRun?.moonshine ?? null}
         whisper={snapshot.currentRun?.whisper ?? null}
       />
-
       <DiagnosticLogPanel logs={snapshot.diagnosticLogs} />
-
       <BenchmarkHistory history={snapshot.history} />
 
       <footer>
-        Moonshine disabled temporarily · Whisper.cpp tiny.en Q5_1 · Local benchmark
+        {MOONSHINE_MODELS[snapshot.selectedModel].name} → Whisper Base.en Q5_1 · Local inference
       </footer>
     </main>
   );

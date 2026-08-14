@@ -116,7 +116,86 @@ describe("addBenchmarkHistoryItem", () => {
 });
 
 describe("summarizeBenchmarkHistory", () => {
-  it("summarizes average median and labeled accuracy per model", () => {
+  it("summarizes Tiny results independently", () => {
+    const tiny = createModelBenchmarkResult({
+      modelId: "moonshine",
+      modelVariant: "tiny-streaming",
+      transcript: "open tasks",
+      lineId: "tiny-1",
+      recordingStartedAt: 0,
+      recordingStoppedAt: 100,
+      transcriptReadyAt: 190,
+      intentDetectedAt: 191,
+      sttCompletionTimeMs: 70,
+      inferenceStartedAt: null,
+      commandProcessingTimeMs: 1,
+      expectedPageId: "tasks",
+      modelAudioReceivedAt: 20,
+      modelResultReadyAt: 190,
+    });
+
+    const summary = summarizeBenchmarkHistory([
+      {
+        id: "tiny-run",
+        startedAt: 0,
+        stoppedAt: 100,
+        expectedPageId: "tasks",
+        moonshine: tiny,
+        whisper: null,
+      },
+    ]);
+
+    expect(summary.tinyStreaming.medianModelProcessingTimeMs).toBe(170);
+    expect(summary.tinyStreaming.accuracy?.percentage).toBe(100);
+    expect(summary.smallStreaming.medianModelProcessingTimeMs).toBeNull();
+    expect(summary.mediumStreaming.medianModelProcessingTimeMs).toBeNull();
+  });
+
+  it("summarizes Small and Medium Moonshine results separately", () => {
+    const small = createModelBenchmarkResult({
+      modelId: "moonshine",
+      modelVariant: "small-streaming",
+      transcript: "open dashboard",
+      lineId: "small-1",
+      recordingStartedAt: 0,
+      recordingStoppedAt: 100,
+      transcriptReadyAt: 200,
+      intentDetectedAt: 201,
+      sttCompletionTimeMs: 80,
+      inferenceStartedAt: null,
+      commandProcessingTimeMs: 1,
+      expectedPageId: "dashboard",
+      modelAudioReceivedAt: 20,
+      modelResultReadyAt: 200,
+    });
+    const medium = createModelBenchmarkResult({
+      modelId: "moonshine",
+      modelVariant: "medium-streaming",
+      transcript: "open settings",
+      lineId: "medium-1",
+      recordingStartedAt: 0,
+      recordingStoppedAt: 100,
+      transcriptReadyAt: 160,
+      intentDetectedAt: 161,
+      sttCompletionTimeMs: 60,
+      inferenceStartedAt: null,
+      commandProcessingTimeMs: 1,
+      expectedPageId: "settings",
+      modelAudioReceivedAt: 20,
+      modelResultReadyAt: 160,
+    });
+    const summary = summarizeBenchmarkHistory([
+      { id: "2", startedAt: 0, stoppedAt: 100, expectedPageId: "settings", moonshine: medium, whisper: null },
+      { id: "1", startedAt: 0, stoppedAt: 100, expectedPageId: "dashboard", moonshine: small, whisper: null },
+    ]);
+
+    expect(summary.smallStreaming.medianModelProcessingTimeMs).toBe(180);
+    expect(summary.mediumStreaming.medianModelProcessingTimeMs).toBe(140);
+    expect(summary.smallStreaming.accuracy?.percentage).toBe(100);
+    expect(summary.mediumStreaming.accuracy?.percentage).toBe(100);
+  });
+
+  it("summarizes average median and labeled accuracy for a Moonshine variant", () => {
     const history: BenchmarkHistoryRun[] = [
       {
         id: "run-2",
@@ -125,6 +204,7 @@ describe("summarizeBenchmarkHistory", () => {
         expectedPageId: "settings",
         moonshine: createModelBenchmarkResult({
           modelId: "moonshine",
+          modelVariant: "small-streaming",
           transcript: "open settings",
           lineId: "m2",
           recordingStartedAt: 0,
@@ -157,6 +237,7 @@ describe("summarizeBenchmarkHistory", () => {
         expectedPageId: "dashboard",
         moonshine: createModelBenchmarkResult({
           modelId: "moonshine",
+          modelVariant: "small-streaming",
           transcript: "open tasks",
           lineId: "m1",
           recordingStartedAt: 0,
@@ -174,22 +255,15 @@ describe("summarizeBenchmarkHistory", () => {
 
     const summary = summarizeBenchmarkHistory(history);
 
-    expect(summary.moonshine.averageCommandReadyAfterStopMs).toBe(150);
-    expect(summary.moonshine.medianCommandReadyAfterStopMs).toBe(150);
-    expect(summary.moonshine.averageModelProcessingTimeMs).toBe(205);
-    expect(summary.moonshine.medianModelProcessingTimeMs).toBe(205);
-    expect(summary.moonshine.accuracy).toEqual({
+    expect(summary.smallStreaming.averageCommandReadyAfterStopMs).toBe(150);
+    expect(summary.smallStreaming.medianCommandReadyAfterStopMs).toBe(150);
+    expect(summary.smallStreaming.averageModelProcessingTimeMs).toBe(205);
+    expect(summary.smallStreaming.medianModelProcessingTimeMs).toBe(205);
+    expect(summary.smallStreaming.accuracy).toEqual({
       correct: 1,
       total: 2,
       percentage: 50,
     });
-    expect(summary.whisper.averageCommandReadyAfterStopMs).toBe(100);
-    expect(summary.whisper.averageModelProcessingTimeMs).toBe(190);
-    expect(summary.whisper.medianModelProcessingTimeMs).toBe(190);
-    expect(summary.whisper.accuracy).toEqual({
-      correct: 1,
-      total: 1,
-      percentage: 100,
-    });
+    expect(summary.mediumStreaming.averageModelProcessingTimeMs).toBeNull();
   });
 });

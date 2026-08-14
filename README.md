@@ -1,143 +1,129 @@
-# Whisper Voice Navigation Benchmark
+# Moonshine v2 Tiny/Small/Medium Voice Navigation Benchmark
 
-A browser-only technical proof of concept for English speech-to-text plus local
-voice navigation intent detection. Moonshine is temporarily disabled in the
-runtime flow. The demo captures microphone audio locally, then sends the
-completed audio buffer to Whisper.cpp tiny.en Q5_1 for speech-to-text.
+A browser-only technical proof of concept for comparing Moonshine v2 Tiny,
+Small, and Medium Streaming on short English voice-navigation commands.
+Speech-to-text, intent detection, audio preprocessing, and latency measurement
+all run locally in the browser.
 
-No Web Speech API, backend, cloud STT API, OpenAI API, Google Speech API,
-AssemblyAI, database, authentication, or LLM intent detection is used.
+The benchmark does not use Web Speech API, a backend, a cloud STT API, an LLM,
+or upload microphone audio. Each recording is streamed to the selected
+Moonshine model first, then the same buffered PCM is processed by Whisper
+Base.en Q5_1 for a sequential comparison.
 
 ## Requirements
 
 - Node.js 20+
-- Recent Chrome or Edge desktop recommended
+- Recent Chrome or Edge desktop
 - Microphone
-- Internet access during the first `npm install` to download model/runtime assets
+- Internet access the first time each Moonshine model is selected
 
-## Install
+## Install and run
 
 ```bash
 npm install
-```
-
-`postinstall` downloads and verifies:
-
-- Moonshine Tiny Streaming English assets in `public/models/tiny-streaming-en`
-- whisper.cpp browser runtime `main.js`
-- Whisper model `ggml-tiny.en-q5_1.bin` in `public/models/whisper-tiny-en-q5_1`
-
-Valid files are reused on later installs. Generated model directories are
-excluded from Git.
-
-## Run
-
-```bash
 npm run dev
 ```
 
-Open the Vite URL, allow microphone access, wait for Whisper to be ready,
-optionally select an expected page label, then speak a short English command
-such as `open dashboard` or `show GitHub integration`.
+Open the Vite URL, allow microphone access, wait for Small Streaming to become
+ready, optionally label the expected page, and speak a short command such as
+`open dashboard` or `show GitHub integration`.
 
-## Build
-
-```bash
-npm run build
-```
-
-## Test
+## Build and test
 
 ```bash
 npm test
+npm run build
 ```
 
-## How It Works
+## Models
+
+The selector offers the official English Moonshine v2 streaming architectures:
+
+- Tiny Streaming: 34M parameters, lowest memory footprint.
+- Small Streaming: 123M parameters, selected by default.
+- Medium Streaming: 245M parameters, more accurate but slower and more
+  memory-intensive.
+
+The application uses `@moonshine-ai/moonshine-wasm@0.1.1` and maps the choices
+to `ModelArch.TinyStreaming`, `ModelArch.SmallStreaming`, and
+`ModelArch.MediumStreaming`. Only one
+transcriber is held in WASM memory. Changing the selection stops any stream,
+closes the old transcriber, then loads the new architecture.
+
+Model files are downloaded from the official Moonshine CDN when first selected
+and stored in the browser Cache API. They are not downloaded during
+`npm install`. Clearing site data removes this model cache.
+
+## How it works
 
 ```text
 Microphone
-    |
-Shared 16 kHz mono PCM capture
-    |
-Send full captured PCM buffer to Whisper.cpp tiny.en Q5_1
-    |
-Whisper transcript
-    |
+    ↓
+16 kHz mono PCM + local audio preprocessing
+    ↓
+Selected Moonshine v2 streaming model
+    ↓
+Partial and final Moonshine transcript
+    ↓
+Same buffered PCM → Whisper Base.en Q5_1 batch inference
+    ↓
 Local TypeScript intent matcher
-    |
-Navigation target and benchmark metrics
+    ↓
+Two navigation targets and independent per-model benchmark metrics
 ```
 
-`AudioCaptureService` owns `getUserMedia()` and stores the resampled PCM chunks.
-When recording stops, Whisper receives the completed PCM buffer and runs in a
-worker using the self-hosted official whisper.cpp runtime.
+`AudioCaptureService` owns `getUserMedia()`, downmixes and resamples microphone
+audio, then sends every processed PCM chunk to the active Moonshine stream.
+The same chunks also drive the RMS/Peak meter and lightweight silence detector.
 
-Both transcripts call the same deterministic `detectNavigationIntent()` matcher.
-The matcher normalizes text, checks token-boundary aliases, applies a small
-navigation-cue boost, and uses lightweight Levenshtein matching with confidence
-and ambiguity thresholds.
+Recording stops when the user clicks Stop, when speech is followed by roughly
+one second of silence, or when the 15-second safety timeout fires. Stopping
+forces Moonshine to flush the final transcript. Whisper is lazy-loaded only
+after that final result, then processes the complete recording. Moonshine and
+Whisper never run inference at the same time, while both runtimes may remain in
+browser memory so subsequent commands do not reload their models.
 
-## Audio Quality Controls
+## Audio quality controls
 
-The microphone panel includes a small local preprocessing section:
-
-- Input gain: applies `1x` to `4x` gain after resampling. The default is `2x`.
-- RMS and Peak meters: RMS shows average speech energy; Peak shows the loudest
-  recent sample. If both stay low while speaking, increase gain or check the mic.
-- Noise gate: optional, off by default. It zeros samples below the configured
-  threshold before gain is applied.
-- Browser processing: `Enhanced microphone` enables browser echo cancellation,
-  noise suppression, and auto gain control; `Raw microphone` disables them for
-  comparison.
-
-The gain/noise gate processing is applied before the captured PCM buffer is
-passed to Whisper.
-
-## Voice Activity Detection
-
-Recording can stop in three ways:
-
-- The user clicks `Stop Benchmark`.
-- VAD detects speech and then at least about one second of silence.
-- The 15 second safety timeout fires.
-
-The current VAD is lightweight and local. It uses the existing RMS/Peak input
-levels instead of a separate model. It waits until speech is detected before it
-allows silence to stop the recording, so initial background quiet does not end
-the run immediately.
+- Input gain applies 1x–4x gain after resampling; default is 2x.
+- Enhanced microphone enables browser echo cancellation, noise suppression,
+  and automatic gain control.
+- Raw microphone disables browser preprocessing for comparison.
+- Optional noise gate suppresses low-level samples before gain.
+- RMS and Peak meters help diagnose quiet or muted microphone input.
 
 ## Metrics
 
-- Model timer: `modelResultReadyAt - modelAudioReceivedAt`.
-  - Whisper starts this timer when the completed PCM buffer is handed to the
-    Whisper service and stops it when Whisper returns its transcript.
-- Whisper inference: worker-side `transcriptReadyAt - inferenceStartedAt`, kept
-  as a debug value and not mixed with main-thread timestamps for the main timer.
+- Model timer: `modelResultReadyAt - modelAudioReceivedAt`. It begins when the
+  first PCM chunk reaches the selected Moonshine model and ends when its final
+  transcript is available.
+- Moonshine transcription latency: `TranscriptLine.lastTranscriptionLatencyMs`,
+  displayed separately as a library-reported diagnostic.
+- Whisper model timer: starts when the completed PCM buffer is sent to
+  Whisper and ends when the worker returns its final transcript.
 - Intent matching: local matcher duration measured with `performance.now()`.
-- Perceived latency: `Command Ready After Stop = max(0, intentDetectedAt - recordingStoppedAt)`.
+- Session summaries report average/median model timers and labeled accuracy
+  separately for Tiny, Small, and Medium.
 
-These numbers are useful for perceived voice-navigation latency, not a
-scientific ASR benchmark.
+These metrics are useful for comparing perceived voice-navigation behavior on
+the current device; they are not a scientific ASR benchmark.
 
-## Browser and Hosting Requirements
+## Browser and hosting requirements
 
-The WASM runtimes require browser features available in modern Chrome and Edge.
-Vite is configured with:
+The threaded WASM build requires cross-origin isolation. Vite dev and preview
+must serve:
 
 ```text
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-Production hosting must serve equivalent headers for `SharedArrayBuffer`,
-WASM threads, and SIMD support.
+Production hosting must serve equivalent headers for `SharedArrayBuffer`, WASM
+threads, and SIMD.
 
 ## Privacy
 
-Audio is processed locally in the browser. The demo does not intentionally send
-microphone audio to an external speech-to-text API. The first install downloads
-model/runtime files from official Moonshine and whisper.cpp sources; the running
-app serves those assets from the application origin.
-
-To verify, open DevTools Network after Whisper is ready, start a command, and
-confirm that speaking creates no microphone audio upload requests.
+Microphone audio is processed locally in the browser and is not intentionally
+sent to an external speech-to-text service. The selected model assets are fetched
+from the Moonshine CDN on first use. To verify this, open DevTools Network after
+the model is ready and confirm that speaking creates no audio upload requests.

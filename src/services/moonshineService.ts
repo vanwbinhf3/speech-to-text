@@ -5,12 +5,38 @@ import {
   type TranscriptEventListener,
   type TranscriptLine,
 } from "@moonshine-ai/moonshine-wasm";
+import type { MoonshineModelVariant } from "../types/navigation";
+
+export type { MoonshineModelVariant } from "../types/navigation";
 
 export interface FinalTranscriptResult {
   text: string;
   sttCompletionTimeMs: number;
   lineId: string;
 }
+
+export const DEFAULT_MOONSHINE_MODEL: MoonshineModelVariant = "small-streaming";
+
+export const MOONSHINE_MODELS = {
+  "tiny-streaming": {
+    name: "Moonshine Tiny Streaming",
+    arch: ModelArch.TinyStreaming,
+    parameters: "34M",
+  },
+  "small-streaming": {
+    name: "Moonshine Small Streaming",
+    arch: ModelArch.SmallStreaming,
+    parameters: "123M",
+  },
+  "medium-streaming": {
+    name: "Moonshine Medium Streaming",
+    arch: ModelArch.MediumStreaming,
+    parameters: "245M",
+  },
+} as const satisfies Record<
+  MoonshineModelVariant,
+  { name: string; arch: ModelArch; parameters: string }
+>;
 
 export interface SpeechRecognitionCallbacks {
   onPartialTranscript?: (text: string) => void;
@@ -76,6 +102,7 @@ export interface TranscriberRuntime {
 }
 
 export type MoonshineRuntimeFactory = (
+  variant: MoonshineModelVariant,
   handlers: RuntimeHandlers,
 ) => Promise<TranscriberRuntime>;
 
@@ -121,28 +148,16 @@ function readBrowserCapabilities(): BrowserCapabilities {
   };
 }
 
-const MODEL_BASE = "/models/tiny-streaming-en";
-const MODEL_FILES = [
-  "frontend.ort",
-  "encoder.ort",
-  "adapter.ort",
-  "cross_kv.ort",
-  "decoder_kv.ort",
-  "streaming_config.json",
-  "tokenizer.bin",
-] as const;
-
-const LOCAL_MODEL_URLS = Object.fromEntries(
-  MODEL_FILES.map((name) => [name, `${MODEL_BASE}/${name}`]),
-);
-
 async function createMoonshineRuntime(
+  variant: MoonshineModelVariant,
   handlers: RuntimeHandlers,
 ): Promise<TranscriberRuntime> {
-  const transcriber = await Transcriber.loadFromUrls(LOCAL_MODEL_URLS, {
-    modelArch: ModelArch.TinyStreaming,
-    onProgress: (loaded, total, file) =>
-      handlers.onProgress(total ? loaded / total : 0, file, { loaded, total }),
+  const transcriber = await Transcriber.load({
+    language: "en",
+    modelArch: MOONSHINE_MODELS[variant].arch,
+    onProgress: (loaded, total, file) => {
+      handlers.onProgress(total ? loaded / total : 0, file, { loaded, total });
+    },
   });
 
   return {
@@ -260,7 +275,12 @@ class ActiveMoonshineStreamSession implements MoonshineStreamSession {
 
 export class MoonshineService {
   private runtime: TranscriberRuntime | null = null;
-  private initializingPromise: Promise<void> | null = null;
+  private loadedVariantValue: MoonshineModelVariant | null = null;
+  private initializing:
+    | { variant: MoonshineModelVariant; promise: Promise<void> }
+    | null = null;
+  private switchQueue: Promise<void> = Promise.resolve();
+  private loadGeneration = 0;
   private activeSession: ActiveMoonshineStreamSession | null = null;
   private disposeTimer: ReturnType<typeof setTimeout> | null = null;
   private resolveDispose: (() => void) | null = null;
@@ -277,21 +297,53 @@ export class MoonshineService {
     this.progressCallback = callback;
   }
 
-  async initialize(): Promise<void> {
+  get loadedVariant(): MoonshineModelVariant | null {
+    return this.loadedVariantValue;
+  }
+
+  async initialize(
+    variant: MoonshineModelVariant = DEFAULT_MOONSHINE_MODEL,
+  ): Promise<void> {
     this.cancelDeferredDispose();
-    if (this.runtime) return;
-    if (this.initializingPromise) return this.initializingPromise;
+    if (this.runtime && this.loadedVariantValue === variant) return;
+    if (this.initializing?.variant === variant) return this.initializing.promise;
 
     const supportError = this.supportCheck();
     if (supportError) throw supportError;
 
-    this.initializingPromise = this.runtimeFactory({
+    const generation = ++this.loadGeneration;
+    const previousSwitch = this.switchQueue.catch(() => undefined);
+    const promise = previousSwitch
+      .then(() => this.loadVariant(variant, generation))
+      .catch((error) => {
+        throw mapSpeechError(error, "model-load-failed");
+      })
+      .finally(() => {
+        if (this.initializing?.promise === promise) this.initializing = null;
+      });
+    this.switchQueue = promise;
+    this.initializing = { variant, promise };
+    return promise;
+  }
+
+  private async loadVariant(
+    variant: MoonshineModelVariant,
+    generation: number,
+  ): Promise<void> {
+    await this.stopListening();
+    this.runtime?.close();
+    this.runtime = null;
+    this.loadedVariantValue = null;
+
+    const isCurrent = () => generation === this.loadGeneration;
+    const runtime = await this.runtimeFactory(variant, {
       onText: (text) => {
+        if (!isCurrent()) return;
         if (import.meta.env.DEV) console.debug(`[Moonshine] partial: ${text}`);
         this.activeSession?.deliverPartial(text);
       },
       onLine: (line) => {
-        if (!line.text.trim()) return;
+        if (!isCurrent() || !line.text.trim()) return;
         if (import.meta.env.DEV) console.debug(`[Moonshine] final: ${line.text}`);
         this.activeSession?.deliverFinal({
           text: line.text.trim(),
@@ -299,33 +351,37 @@ export class MoonshineService {
           lineId: line.id,
         });
       },
-      onError: (error) => this.activeSession?.deliverError(error),
-      onProgress: (fraction, file, bytes) =>
-        this.progressCallback?.(fraction, file, bytes),
-    })
-      .then((runtime) => {
-        this.runtime = runtime;
-        if (import.meta.env.DEV) console.info("[Moonshine] model loaded");
-      })
-      .catch((error) => {
-        throw mapSpeechError(error, "model-load-failed");
-      })
-      .finally(() => {
-        this.initializingPromise = null;
-      });
+      onError: (error) => {
+        if (isCurrent()) this.activeSession?.deliverError(error);
+      },
+      onProgress: (fraction, file, bytes) => {
+        if (isCurrent()) this.progressCallback?.(fraction, file, bytes);
+      },
+    });
 
-    return this.initializingPromise;
+    if (!isCurrent()) {
+      runtime.close();
+      return;
+    }
+
+    this.runtime = runtime;
+    this.loadedVariantValue = variant;
+    if (import.meta.env.DEV) {
+      console.info(`[Moonshine] ${MOONSHINE_MODELS[variant].name} loaded`);
+    }
   }
 
   async beginStream(
     callbacks: SpeechRecognitionCallbacks,
+    variant: MoonshineModelVariant =
+      this.loadedVariantValue ?? DEFAULT_MOONSHINE_MODEL,
   ): Promise<MoonshineStreamSession> {
     this.cancelDeferredDispose();
     if (this.activeSession && !this.activeSession.stopped) {
       return this.activeSession;
     }
 
-    await this.initialize();
+    await this.initialize(variant);
     if (!this.runtime) throw new Error("Moonshine runtime is unavailable");
 
     const stream = this.runtime.createStream();
@@ -378,15 +434,13 @@ export class MoonshineService {
 
   private async closeNow(): Promise<void> {
     this.disposeTimer = null;
-    const pendingInitialization = this.initializingPromise;
-    if (pendingInitialization) {
-      await pendingInitialization.catch(() => undefined);
-    }
+    await this.switchQueue.catch(() => undefined);
     try {
       await this.stopListening();
     } finally {
       this.runtime?.close();
       this.runtime = null;
+      this.loadedVariantValue = null;
       this.resolveDispose?.();
       this.resolveDispose = null;
     }

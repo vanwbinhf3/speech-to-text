@@ -58,11 +58,11 @@ interface WhisperRuntimeModule {
   monitorRunDependencies?: (left: number) => void;
 }
 
-const ASSET_BASE = "/models/whisper-tiny-en-q5_1";
+const ASSET_BASE = "/models/whisper-base-en-q5_1";
 const RUNTIME_URL = `${ASSET_BASE}/main.js`;
-const MODEL_URL = `${ASSET_BASE}/ggml-tiny.en-q5_1.bin`;
-const MODEL_FILE = "ggml-tiny.en-q5_1.bin";
-const MODEL_SIZE_BYTES = 32_166_155;
+const MODEL_URL = `${ASSET_BASE}/ggml-base.en-q5_1.bin`;
+const MODEL_FILE = "ggml-base.en-q5_1.bin";
+const MODEL_SIZE_BYTES = 59_721_011;
 const MODEL_PATH = "whisper.bin";
 const DEFAULT_TIMEOUT_MS = 90_000;
 const workerScope = globalThis as unknown as WhisperWorkerScope;
