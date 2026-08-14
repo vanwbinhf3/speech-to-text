@@ -1,4 +1,5 @@
-import type { BenchmarkHistoryRun, ModelBenchmarkResult } from "../types/navigation";
+import { MOONSHINE_MODELS } from "../services/moonshineService";
+import type { BenchmarkHistoryRun } from "../types/navigation";
 
 interface BenchmarkHistoryProps {
   history: BenchmarkHistoryRun[];
@@ -23,30 +24,31 @@ export function BenchmarkHistory({ history }: BenchmarkHistoryProps) {
             <thead>
               <tr>
                 <th>Run</th>
-                <th>Moonshine</th>
-                <th>Whisper</th>
+                <th>Model</th>
+                <th>Speech</th>
+                <th>Page</th>
+                <th>Timer</th>
                 <th>Expected</th>
               </tr>
             </thead>
             <tbody>
-              {history.map((run) => (
-                <tr key={run.id}>
-                  <td>{run.id}</td>
-                  <td>{formatResult(run.moonshine)}</td>
-                  <td>{formatResult(run.whisper)}</td>
-                  <td>{run.expectedPageId ?? "-"}</td>
-                </tr>
-              ))}
+              {history.map((run) => {
+                const result = run.moonshine;
+                return (
+                  <tr key={run.id}>
+                    <td>{run.id}</td>
+                    <td>{result?.modelVariant ? MOONSHINE_MODELS[result.modelVariant].name.replace("Moonshine ", "") : "-"}</td>
+                    <td>{result ? `"${result.transcript}"` : "-"}</td>
+                    <td>{result?.intent.pageName ?? (result ? "Unknown" : "-")}</td>
+                    <td>{result ? `${Math.round(result.metrics.modelProcessingTimeMs)} ms` : "-"}</td>
+                    <td>{run.expectedPageId ?? "-"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
     </section>
   );
-}
-
-function formatResult(result: ModelBenchmarkResult | null): string {
-  if (!result) return "-";
-  const page = result.intent.pageName ?? "Unknown";
-  return `${page} / ${Math.round(result.metrics.modelProcessingTimeMs)} ms`;
 }

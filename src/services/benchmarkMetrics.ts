@@ -5,10 +5,12 @@ import type {
   ModelBenchmarkResult,
   ModelId,
   ModelSummary,
+  MoonshineModelVariant,
 } from "../types/navigation";
 
 export interface CreateModelBenchmarkResultInput {
   modelId: ModelId;
+  modelVariant?: MoonshineModelVariant | null;
   transcript: string;
   lineId: string;
   recordingStartedAt: number;
@@ -26,6 +28,7 @@ export interface CreateModelBenchmarkResultInput {
 
 export function createModelBenchmarkResult({
   modelId,
+  modelVariant = null,
   transcript,
   lineId,
   recordingStartedAt,
@@ -54,6 +57,7 @@ export function createModelBenchmarkResult({
 
   return {
     modelId,
+    modelVariant,
     lineId,
     transcript,
     intent,
@@ -94,18 +98,27 @@ export function summarizeBenchmarkHistory(
   history: readonly BenchmarkHistoryRun[],
 ): BenchmarkSummary {
   return {
-    moonshine: summarizeModel(history, "moonshine"),
-    whisper: summarizeModel(history, "whisper"),
+    tinyStreaming: summarizeMoonshineVariant(history, "tiny-streaming"),
+    smallStreaming: summarizeMoonshineVariant(history, "small-streaming"),
+    mediumStreaming: summarizeMoonshineVariant(history, "medium-streaming"),
   };
 }
 
-function summarizeModel(
+function summarizeMoonshineVariant(
   history: readonly BenchmarkHistoryRun[],
-  modelId: ModelId,
+  variant: MoonshineModelVariant,
 ): ModelSummary {
-  const results = history
-    .map((run) => run[modelId])
-    .filter((result): result is ModelBenchmarkResult => result !== null);
+  return summarizeResults(
+    history
+      .map((run) => run.moonshine)
+      .filter(
+        (result): result is ModelBenchmarkResult =>
+          result !== null && result.modelVariant === variant,
+      ),
+  );
+}
+
+function summarizeResults(results: readonly ModelBenchmarkResult[]): ModelSummary {
   const latencies = results.map(
     (result) => result.metrics.commandReadyAfterStopMs,
   );

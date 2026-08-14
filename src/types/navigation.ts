@@ -28,6 +28,10 @@ export interface CommandHistoryItem {
 }
 
 export type ModelId = "moonshine" | "whisper";
+export type MoonshineModelVariant =
+  | "tiny-streaming"
+  | "small-streaming"
+  | "medium-streaming";
 
 export interface ModelBenchmarkMetrics {
   sttCompletionTimeMs: number | null;
@@ -48,6 +52,7 @@ export interface ModelBenchmarkMetrics {
 
 export interface ModelBenchmarkResult {
   modelId: ModelId;
+  modelVariant: MoonshineModelVariant | null;
   lineId: string;
   transcript: string;
   intent: NavigationIntent;
@@ -61,6 +66,7 @@ export interface BenchmarkHistoryRun {
   startedAt: number;
   stoppedAt: number;
   expectedPageId: string | null;
+  modelVariant?: MoonshineModelVariant | null;
   moonshine: ModelBenchmarkResult | null;
   whisper: ModelBenchmarkResult | null;
 }
@@ -78,6 +84,7 @@ export interface ModelSummary {
 }
 
 export interface BenchmarkSummary {
-  moonshine: ModelSummary;
-  whisper: ModelSummary;
+  tinyStreaming: ModelSummary;
+  smallStreaming: ModelSummary;
+  mediumStreaming: ModelSummary;
 }

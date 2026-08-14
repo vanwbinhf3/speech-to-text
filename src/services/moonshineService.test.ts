@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import { ModelArch } from "@moonshine-ai/moonshine-wasm";
 
 import {
+  MOONSHINE_MODELS,
   MoonshineService,
   getBrowserSupportError,
+  type MoonshineModelVariant,
   type MoonshineRuntimeFactory,
   type MoonshineStreamListener,
   type RuntimeHandlers,
@@ -33,13 +36,75 @@ describe("getBrowserSupportError", () => {
 });
 
 describe("MoonshineService", () => {
+  it("maps Tiny, Small, and Medium variants to their streaming architectures", () => {
+    expect(MOONSHINE_MODELS["tiny-streaming"].arch).toBe(
+      ModelArch.TinyStreaming,
+    );
+    expect(MOONSHINE_MODELS["small-streaming"].arch).toBe(
+      ModelArch.SmallStreaming,
+    );
+    expect(MOONSHINE_MODELS["medium-streaming"].arch).toBe(
+      ModelArch.MediumStreaming,
+    );
+    expect(MOONSHINE_MODELS["tiny-streaming"].parameters).toBe("34M");
+  });
+
   it("deduplicates concurrent initialization", async () => {
     const { factory } = createFakeRuntime();
     const service = new MoonshineService(factory, () => null);
 
-    await Promise.all([service.initialize(), service.initialize()]);
+    await Promise.all([
+      service.initialize("small-streaming"),
+      service.initialize("small-streaming"),
+    ]);
 
     expect(factory).toHaveBeenCalledTimes(1);
+    expect(factory).toHaveBeenCalledWith(
+      "small-streaming",
+      expect.any(Object),
+    );
+  });
+
+  it("closes the loaded model before switching variants", async () => {
+    const first = createFakeRuntime();
+    const second = createFakeRuntime();
+    const factory = vi
+      .fn<MoonshineRuntimeFactory>()
+      .mockImplementationOnce(first.factory)
+      .mockImplementationOnce(second.factory);
+    const service = new MoonshineService(factory, () => null);
+
+    await service.initialize("small-streaming");
+    await service.initialize("medium-streaming");
+
+    expect(first.closeTranscriber).toHaveBeenCalledTimes(1);
+    expect(factory.mock.calls.map(([variant]) => variant)).toEqual([
+      "small-streaming",
+      "medium-streaming",
+    ]);
+  });
+
+  it("discards a stale model load before activating the newer variant", async () => {
+    let finishSmall: (() => void) | undefined;
+    const small = createFakeRuntime(
+      new Promise<void>((resolve) => {
+        finishSmall = resolve;
+      }),
+    );
+    const medium = createFakeRuntime();
+    const factory = vi
+      .fn<MoonshineRuntimeFactory>()
+      .mockImplementationOnce(small.factory)
+      .mockImplementationOnce(medium.factory);
+    const service = new MoonshineService(factory, () => null);
+
+    const smallLoad = service.initialize("small-streaming");
+    const mediumLoad = service.initialize("medium-streaming");
+    finishSmall?.();
+    await Promise.all([smallLoad, mediumLoad]);
+
+    expect(small.closeTranscriber).toHaveBeenCalledTimes(1);
+    expect(service.loadedVariant).toBe("medium-streaming");
   });
 
   it("feeds external PCM chunks into a streaming session", async () => {
@@ -149,7 +214,10 @@ function createFakeRuntime(loadGate: Promise<void> = Promise.resolve()) {
     close: vi.fn(),
   };
   const closeTranscriber = vi.fn();
-  const factory = vi.fn<MoonshineRuntimeFactory>(async (nextHandlers) => {
+  const factory = vi.fn<MoonshineRuntimeFactory>(async (
+    _variant: MoonshineModelVariant,
+    nextHandlers: RuntimeHandlers,
+  ) => {
     await loadGate;
     handlers = nextHandlers;
     return {

@@ -2,13 +2,9 @@ import { pages } from "../config/pages";
 
 interface PageOptionsProps {
   moonshinePageId?: string | null;
-  whisperPageId?: string | null;
 }
 
-export function PageOptions({
-  moonshinePageId = null,
-  whisperPageId = null,
-}: PageOptionsProps) {
+export function PageOptions({ moonshinePageId = null }: PageOptionsProps) {
   return (
     <section className="panel pages-panel" aria-labelledby="available-pages">
       <div className="section-heading">
@@ -20,9 +16,7 @@ export function PageOptions({
       </div>
       <div className="page-grid">
         {pages.map((page) => {
-          const moonshineSelected = page.id === moonshinePageId;
-          const whisperSelected = page.id === whisperPageId;
-          const selected = moonshineSelected || whisperSelected;
+          const selected = page.id === moonshinePageId;
           return (
             <div
               className={`page-chip${selected ? " page-chip--selected" : ""}`}
@@ -30,8 +24,7 @@ export function PageOptions({
               aria-current={selected ? "page" : undefined}
             >
               <span>{page.name}</span>
-              {moonshineSelected && <small>M</small>}
-              {whisperSelected && <small>W</small>}
+              {selected && <small>✓</small>}
             </div>
           );
         })}
