@@ -1,4 +1,5 @@
 import type { MoonshineProgress } from "../services/benchmarkController";
+import type { WhisperProgress } from "../services/whisperService";
 import {
   MOONSHINE_MODELS,
   type MoonshineModelVariant,
@@ -9,6 +10,9 @@ interface ModelStatusPanelProps {
   moonshineStatus: string;
   moonshineError: string | null;
   moonshineProgress: MoonshineProgress | null;
+  whisperStatus: string;
+  whisperError: string | null;
+  whisperProgress: WhisperProgress | null;
   selectionDisabled: boolean;
   onModelChange: (variant: MoonshineModelVariant) => void;
   onRetry: () => void;
@@ -19,6 +23,9 @@ export function ModelStatusPanel({
   moonshineStatus,
   moonshineError,
   moonshineProgress,
+  whisperStatus,
+  whisperError,
+  whisperProgress,
   selectionDisabled,
   onModelChange,
   onRetry,
@@ -26,6 +33,9 @@ export function ModelStatusPanel({
   const selected = MOONSHINE_MODELS[selectedModel];
   const progressDetail = moonshineProgress
     ? `${Math.round(moonshineProgress.fraction * 100)}% · ${moonshineProgress.file}`
+    : null;
+  const whisperProgressDetail = whisperProgress
+    ? `${Math.round(whisperProgress.fraction * 100)}% · ${whisperProgress.file}`
     : null;
 
   return (
@@ -74,6 +84,24 @@ export function ModelStatusPanel({
             <div className="load-progress" aria-label="Model download progress">
               <div className="progress-track">
                 <span style={{ width: `${moonshineProgress.fraction * 100}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className={`model-status-card model-status-card--${whisperStatus}`}>
+          <span>{whisperStatus}</span>
+          <strong>Whisper Base.en Q5_1</strong>
+          <p>
+            {whisperError ??
+              whisperProgressDetail ??
+              (whisperStatus === "idle"
+                ? "Loads only after Moonshine returns its final transcript"
+                : "Runs on the complete buffered recording after Moonshine")}
+          </p>
+          {whisperStatus === "loading" && whisperProgress && (
+            <div className="load-progress" aria-label="Whisper download progress">
+              <div className="progress-track">
+                <span style={{ width: `${whisperProgress.fraction * 100}%` }} />
               </div>
             </div>
           )}

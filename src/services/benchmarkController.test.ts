@@ -27,7 +27,9 @@ describe("BenchmarkController", () => {
     expect(controller.getSnapshot()).toMatchObject({
       selectedModel: "small-streaming",
       moonshineStatus: "ready",
+      whisperStatus: "idle",
     });
+    expect(fakes.dependencies.whisper.initialize).not.toHaveBeenCalled();
   });
 
   it("loads Medium after the selected model changes", async () => {
@@ -90,7 +92,67 @@ describe("BenchmarkController", () => {
       (result?.metrics.modelResultReadyAt ?? 0) -
         (result?.metrics.modelAudioReceivedAt ?? 0),
     );
+    expect(controller.getSnapshot().history[0].whisper?.transcript).toBe(
+      "open dashboard",
+    );
+    const whisper = controller.getSnapshot().history[0].whisper;
+    expect(whisper?.metrics.modelAudioReceivedAt).toBeGreaterThanOrEqual(
+      result?.metrics.modelResultReadyAt ?? 0,
+    );
+    expect(whisper?.metrics.modelProcessingTimeMs).toBe(
+      (whisper?.metrics.modelResultReadyAt ?? 0) -
+        (whisper?.metrics.modelAudioReceivedAt ?? 0),
+    );
+  });
+
+  it("runs Whisper on the complete recording only after Moonshine final", async () => {
+    const fakes = createFakes();
+    const controller = new BenchmarkController(fakes.dependencies);
+    await controller.initializeModels();
+    await controller.start("tasks");
+    fakes.emitAudioInput(Float32Array.from([0.25, -0.5]));
+
+    expect(fakes.dependencies.whisper.initialize).not.toHaveBeenCalled();
+    expect(fakes.dependencies.whisper.transcribe).not.toHaveBeenCalled();
+
+    fakes.emitFinal("open tasks", 75);
+
+    await vi.waitFor(() =>
+      expect(fakes.dependencies.whisper.transcribe).toHaveBeenCalledTimes(1),
+    );
+    expect(fakes.dependencies.whisper.initialize).toHaveBeenCalledTimes(1);
+    expect(fakes.dependencies.whisper.transcribe).toHaveBeenCalledWith(
+      Float32Array.from([0.25, -0.5]),
+      "run-1",
+    );
+    await vi.waitFor(() => expect(controller.getSnapshot().history).toHaveLength(1));
+    expect(controller.getSnapshot().history[0].moonshine?.transcript).toBe(
+      "open tasks",
+    );
+    expect(controller.getSnapshot().history[0].whisper?.transcript).toBe(
+      "open tasks",
+    );
+  });
+
+  it("keeps the Moonshine result when Whisper initialization fails", async () => {
+    const fakes = createFakes();
+    fakes.dependencies.whisper.initialize.mockRejectedValueOnce(
+      new Error("Whisper load failed"),
+    );
+    const controller = new BenchmarkController(fakes.dependencies);
+    await controller.initializeModels();
+    await controller.start("dashboard");
+    fakes.emitAudioInput();
+
+    fakes.emitFinal("open dashboard", 81);
+
+    await vi.waitFor(() => expect(controller.getSnapshot().history).toHaveLength(1));
+    expect(controller.getSnapshot().history[0].moonshine?.transcript).toBe(
+      "open dashboard",
+    );
     expect(controller.getSnapshot().history[0].whisper).toBeNull();
+    expect(controller.getSnapshot().whisperStatus).toBe("error");
+    expect(controller.getSnapshot().whisperError).toBe("Whisper load failed");
   });
 
   it("shows partial transcript while recording", async () => {
@@ -213,6 +275,7 @@ function createFakes() {
   const audioSession = new FakeAudioSession();
   const moonshineSession = new FakeMoonshineSession();
   let moonshineCallbacks: SpeechRecognitionCallbacks | null = null;
+  let whisperTranscript = "";
 
   const dependencies = {
     now: () => {
@@ -246,6 +309,20 @@ function createFakes() {
       stopListening: vi.fn(async () => moonshineSession.stop()),
       onModelProgress: vi.fn(),
     },
+    whisper: {
+      initialize: vi.fn(async () => undefined),
+      transcribe: vi.fn(async (_pcm: Float32Array, requestId: string) => {
+        const inferenceStartedAt = nowValue + 10;
+        nowValue += 40;
+        return {
+          requestId,
+          text: whisperTranscript,
+          inferenceStartedAt,
+          transcriptReadyAt: nowValue,
+          inferenceTimeMs: nowValue - inferenceStartedAt,
+        };
+      }),
+    },
   };
 
   return {
@@ -262,6 +339,7 @@ function createFakes() {
       moonshineCallbacks?.onPartialTranscript?.(text);
     },
     emitFinal(text: string, sttCompletionTimeMs: number) {
+      whisperTranscript = text;
       moonshineCallbacks?.onFinalTranscript?.({
         text,
         sttCompletionTimeMs,
@@ -275,12 +353,14 @@ class FakeAudioSession implements AudioCaptureSession {
   stopped = false;
   stopCalls = 0;
   callbacks?: AudioCaptureCallbacks;
+  private readonly chunks: Float32Array[] = [];
 
   setCallbacks(callbacks?: AudioCaptureCallbacks): void {
     this.callbacks = callbacks;
   }
 
   emitInput(chunk: Float32Array): void {
+    this.chunks.push(new Float32Array(chunk));
     this.callbacks?.onInputLevel?.({
       rms: calculateInputVolume(chunk),
       peak: calculateInputPeakVolume(chunk),
@@ -296,7 +376,7 @@ class FakeAudioSession implements AudioCaptureSession {
   async stop(): Promise<Float32Array> {
     this.stopCalls += 1;
     this.stopped = true;
-    return Float32Array.from([0.1, 0.2]);
+    return Float32Array.from(this.chunks.flatMap((chunk) => Array.from(chunk)));
   }
 }
 

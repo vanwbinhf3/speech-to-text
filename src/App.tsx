@@ -50,7 +50,8 @@ export default function App() {
           <p className="hero-copy">
             Speak a short English navigation command. The browser streams local
             microphone audio into the selected Moonshine Tiny, Small, or Medium model,
-            then detects the target page without an LLM.
+            then sends the same buffered recording to Whisper Base.en for a
+            sequential comparison without an LLM.
           </p>
         </div>
         <div className="privacy-pill">
@@ -58,15 +59,19 @@ export default function App() {
         </div>
       </header>
 
-      {snapshot.moonshineError && (
+      {(snapshot.moonshineError || snapshot.whisperError) && (
         <section className="error-banner" role="alert">
           <div>
             <strong>Speech Recognition Error</strong>
-            <p>{snapshot.moonshineError}</p>
+            <p>{snapshot.moonshineError ?? snapshot.whisperError}</p>
           </div>
-          <button type="button" onClick={() => void initializeModels()}>
-            Retry
-          </button>
+          {snapshot.moonshineError ? (
+            <button type="button" onClick={() => void initializeModels()}>
+              Retry
+            </button>
+          ) : (
+            <span>Whisper will retry after the next Moonshine result.</span>
+          )}
         </section>
       )}
 
@@ -75,6 +80,9 @@ export default function App() {
         moonshineStatus={snapshot.moonshineStatus}
         moonshineError={snapshot.moonshineError}
         moonshineProgress={snapshot.moonshineProgress}
+        whisperStatus={snapshot.whisperStatus}
+        whisperError={snapshot.whisperError}
+        whisperProgress={snapshot.whisperProgress}
         selectionDisabled={running}
         onModelChange={(variant) => void benchmarkController.selectModel(variant)}
         onRetry={() => void initializeModels()}
@@ -103,12 +111,15 @@ export default function App() {
         <SessionSummary summary={snapshot.summary} />
       </div>
 
-      <ModelComparison moonshine={snapshot.currentRun?.moonshine ?? null} />
+      <ModelComparison
+        moonshine={snapshot.currentRun?.moonshine ?? null}
+        whisper={snapshot.currentRun?.whisper ?? null}
+      />
       <DiagnosticLogPanel logs={snapshot.diagnosticLogs} />
       <BenchmarkHistory history={snapshot.history} />
 
       <footer>
-        {MOONSHINE_MODELS[snapshot.selectedModel].name} · Moonshine v2 · Local inference
+        {MOONSHINE_MODELS[snapshot.selectedModel].name} → Whisper Base.en Q5_1 · Local inference
       </footer>
     </main>
   );

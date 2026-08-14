@@ -21,6 +21,11 @@ import {
   type MoonshineStreamSession,
   type SpeechServiceError,
 } from "./moonshineService";
+import {
+  whisperService,
+  type WhisperProgress,
+  type WhisperService,
+} from "./whisperService";
 import type {
   BenchmarkHistoryRun,
   BenchmarkSummary,
@@ -69,6 +74,9 @@ export interface BenchmarkSnapshot {
   moonshineStatus: ModelStatus;
   moonshineError: string | null;
   moonshineProgress: MoonshineProgress | null;
+  whisperStatus: ModelStatus;
+  whisperError: string | null;
+  whisperProgress: WhisperProgress | null;
   inputVolume: number;
   inputPeakVolume: number;
   audioProcessingConfig: AudioProcessingConfig;
@@ -90,6 +98,7 @@ export interface BenchmarkControllerDependencies {
     MoonshineService,
     "initialize" | "beginStream" | "stopListening" | "onModelProgress"
   >;
+  whisper: Pick<WhisperService, "initialize" | "transcribe">;
 }
 
 const DEFAULT_DEPENDENCIES: BenchmarkControllerDependencies = {
@@ -98,6 +107,7 @@ const DEFAULT_DEPENDENCIES: BenchmarkControllerDependencies = {
   clearTimeout: globalThis.clearTimeout.bind(globalThis),
   audioCapture: audioCaptureService,
   moonshine: moonshineService,
+  whisper: whisperService,
 };
 
 export class BenchmarkController {
@@ -107,6 +117,9 @@ export class BenchmarkController {
     moonshineStatus: "idle",
     moonshineError: null,
     moonshineProgress: null,
+    whisperStatus: "idle",
+    whisperError: null,
+    whisperProgress: null,
     inputVolume: 0,
     inputPeakVolume: 0,
     audioProcessingConfig: DEFAULT_AUDIO_PROCESSING_CONFIG,
@@ -360,7 +373,7 @@ export class BenchmarkController {
     const modelResultReadyAt = this.dependencies.now();
     this.clearRecordingTimeout();
     this.moonshineSession = null;
-    await this.stopAudioCapture(runId);
+    const pcm = await this.stopAudioCapture(runId);
     if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
 
     const result = createModelBenchmarkResult({
@@ -381,18 +394,98 @@ export class BenchmarkController {
     });
     this.updateCurrentRun({ moonshine: result, partialTranscript: "" });
     this.addLog("info", `Moonshine final: "${final.text}"`);
-    this.completeRun();
+    if (pcm.length === 0) {
+      this.addLog("warn", "No recorded PCM is available for Whisper");
+      this.completeRun();
+      return;
+    }
+
+    const whisperReady = await this.ensureWhisperReady();
+    if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
+    if (!whisperReady) {
+      this.completeRun();
+      return;
+    }
+
+    await this.runWhisper(runId, pcm);
   }
 
-  private async stopAudioCapture(runId: string): Promise<void> {
+  private async stopAudioCapture(runId: string): Promise<Float32Array> {
     const audioSession = this.audioSession;
     this.audioSession = null;
-    if (audioSession) await audioSession.stop();
+    const pcm = audioSession
+      ? await audioSession.stop()
+      : new Float32Array();
     const stoppedAt = this.dependencies.now();
-    if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
+    if (this.activeRunId !== runId || !this.snapshot.currentRun) return pcm;
     this.updateCurrentRun({ stoppedAt, status: "transcribing" });
     this.patch({ status: "transcribing", inputVolume: 0, inputPeakVolume: 0 });
     this.addLog("info", "Microphone capture stopped");
+    return pcm;
+  }
+
+  private async ensureWhisperReady(): Promise<boolean> {
+    if (this.snapshot.whisperStatus === "ready") return true;
+
+    this.patch({
+      whisperStatus: "loading",
+      whisperError: null,
+      whisperProgress: null,
+    });
+    this.addLog("info", "Loading Whisper Base.en after Moonshine final");
+
+    try {
+      await this.dependencies.whisper.initialize({
+        onProgress: (progress) => this.patch({ whisperProgress: progress }),
+      });
+      this.patch({ whisperStatus: "ready", whisperError: null });
+      this.addLog("info", "Whisper Base.en ready");
+      return true;
+    } catch (error) {
+      const message = errorMessage(error);
+      this.patch({ whisperStatus: "error", whisperError: message });
+      this.updateCurrentRun({ error: message });
+      this.addLog("error", `Whisper load failed: ${message}`);
+      return false;
+    }
+  }
+
+  private async runWhisper(runId: string, pcm: Float32Array): Promise<void> {
+    const run = this.snapshot.currentRun;
+    if (this.activeRunId !== runId || !run?.moonshine) return;
+
+    this.addLog("info", `Sending ${pcm.length} PCM samples to Whisper Base.en`);
+    const modelAudioReceivedAt = this.dependencies.now();
+    try {
+      const final = await this.dependencies.whisper.transcribe(
+        new Float32Array(pcm),
+        runId,
+      );
+      if (this.activeRunId !== runId || !this.snapshot.currentRun) return;
+      const modelResultReadyAt = this.dependencies.now();
+      const result = createModelBenchmarkResult({
+        modelId: "whisper",
+        transcript: final.text,
+        lineId: final.requestId,
+        recordingStartedAt: this.snapshot.currentRun.startedAt,
+        recordingStoppedAt: this.snapshot.currentRun.stoppedAt,
+        transcriptReadyAt: final.transcriptReadyAt,
+        sttCompletionTimeMs: null,
+        inferenceStartedAt: final.inferenceStartedAt,
+        modelAudioReceivedAt,
+        modelResultReadyAt,
+        expectedPageId: this.snapshot.currentRun.expectedPageId,
+        now: this.dependencies.now,
+      });
+      this.updateCurrentRun({ whisper: result });
+      this.addLog("info", `Whisper final: "${final.text}"`);
+    } catch (error) {
+      const message = errorMessage(error);
+      this.patch({ whisperStatus: "error", whisperError: message });
+      this.updateCurrentRun({ error: message });
+      this.addLog("error", `Whisper transcription failed: ${message}`);
+    }
+    this.completeRun();
   }
 
   private completeRun(): void {
@@ -405,7 +498,7 @@ export class BenchmarkController {
       expectedPageId: run.expectedPageId,
       modelVariant: run.modelVariant,
       moonshine: run.moonshine,
-      whisper: null,
+      whisper: run.whisper,
     };
     const history = addBenchmarkHistoryItem(this.snapshot.history, completed);
     this.activeRunId = null;

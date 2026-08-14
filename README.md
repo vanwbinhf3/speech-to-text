@@ -6,8 +6,9 @@ Speech-to-text, intent detection, audio preprocessing, and latency measurement
 all run locally in the browser.
 
 The benchmark does not use Web Speech API, a backend, a cloud STT API, an LLM,
-or upload microphone audio. The previous Whisper implementation remains in the
-repository for future experiments but is not initialized by this benchmark.
+or upload microphone audio. Each recording is streamed to the selected
+Moonshine model first, then the same buffered PCM is processed by Whisper
+Base.en Q5_1 for a sequential comparison.
 
 ## Requirements
 
@@ -62,11 +63,13 @@ Microphone
     ↓
 Selected Moonshine v2 streaming model
     ↓
-Partial and final transcript
+Partial and final Moonshine transcript
+    ↓
+Same buffered PCM → Whisper Base.en Q5_1 batch inference
     ↓
 Local TypeScript intent matcher
     ↓
-Navigation target and per-model benchmark metrics
+Two navigation targets and independent per-model benchmark metrics
 ```
 
 `AudioCaptureService` owns `getUserMedia()`, downmixes and resamples microphone
@@ -75,7 +78,10 @@ The same chunks also drive the RMS/Peak meter and lightweight silence detector.
 
 Recording stops when the user clicks Stop, when speech is followed by roughly
 one second of silence, or when the 15-second safety timeout fires. Stopping
-forces Moonshine to flush the final transcript.
+forces Moonshine to flush the final transcript. Whisper is lazy-loaded only
+after that final result, then processes the complete recording. Moonshine and
+Whisper never run inference at the same time, while both runtimes may remain in
+browser memory so subsequent commands do not reload their models.
 
 ## Audio quality controls
 
@@ -93,6 +99,8 @@ forces Moonshine to flush the final transcript.
   transcript is available.
 - Moonshine transcription latency: `TranscriptLine.lastTranscriptionLatencyMs`,
   displayed separately as a library-reported diagnostic.
+- Whisper model timer: starts when the completed PCM buffer is sent to
+  Whisper and ends when the worker returns its final transcript.
 - Intent matching: local matcher duration measured with `performance.now()`.
 - Session summaries report average/median model timers and labeled accuracy
   separately for Tiny, Small, and Medium.

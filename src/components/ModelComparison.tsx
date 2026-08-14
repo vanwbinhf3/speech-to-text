@@ -3,56 +3,82 @@ import type { ModelBenchmarkResult } from "../types/navigation";
 
 interface ModelComparisonProps {
   moonshine: ModelBenchmarkResult | null;
+  whisper: ModelBenchmarkResult | null;
 }
 
-export function ModelComparison({ moonshine }: ModelComparisonProps) {
-  const target = moonshine?.intent.pageName ?? (moonshine ? "Unknown" : "-");
-  const title = moonshine?.modelVariant
+export function ModelComparison({ moonshine, whisper }: ModelComparisonProps) {
+  const moonshineTitle = moonshine?.modelVariant
     ? MOONSHINE_MODELS[moonshine.modelVariant].name
     : "Moonshine Streaming";
 
   return (
-    <section className="comparison-grid comparison-grid--single" aria-label="Moonshine result">
+    <section className="comparison-grid" aria-label="Model comparison">
+      <ResultCard
+        title={moonshineTitle}
+        result={moonshine}
+        diagnosticLabel="Moonshine transcription latency"
+        diagnosticValue={moonshine?.metrics.sttCompletionTimeMs ?? null}
+      />
+      <ResultCard
+        title="Whisper Base.en Q5_1"
+        result={whisper}
+        diagnosticLabel="Whisper inference"
+        diagnosticValue={whisper?.metrics.inferenceTimeMs ?? null}
+      />
+    </section>
+  );
+}
+
+function ResultCard({
+  title,
+  result,
+  diagnosticLabel,
+  diagnosticValue,
+}: {
+  title: string;
+  result: ModelBenchmarkResult | null;
+  diagnosticLabel: string;
+  diagnosticValue: number | null;
+}) {
+  const target = result?.intent.pageName ?? (result ? "Unknown" : "-");
+  return (
       <article className="panel model-result-card">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Transcript result</p>
             <h2>{title}</h2>
           </div>
-          {moonshine?.correct !== null && moonshine?.correct !== undefined && (
-            <span className={moonshine.correct ? "result-state" : "result-state result-state--unknown"}>
-              {moonshine.correct ? "Correct" : "Mismatch"}
+          {result?.correct !== null && result?.correct !== undefined && (
+            <span className={result.correct ? "result-state" : "result-state result-state--unknown"}>
+              {result.correct ? "Correct" : "Mismatch"}
             </span>
           )}
         </div>
         <div className="result-block result-block--wide">
           <span>Recognized text</span>
-          <strong>{moonshine ? `"${moonshine.transcript}"` : "-"}</strong>
+          <strong>{result ? `"${result.transcript}"` : "-"}</strong>
         </div>
         <div className="result-grid result-grid--compact">
           <Metric label="Detected page" value={target} accent />
           <Metric
             label="Model timer"
-            value={moonshine ? `${Math.round(moonshine.metrics.modelProcessingTimeMs)} ms` : "-"}
+            value={result ? `${Math.round(result.metrics.modelProcessingTimeMs)} ms` : "-"}
           />
           <Metric
-            label="Moonshine transcription latency"
-            value={moonshine?.metrics.sttCompletionTimeMs === null || !moonshine
-              ? "-"
-              : `${Math.round(moonshine.metrics.sttCompletionTimeMs)} ms`}
+            label={diagnosticLabel}
+            value={diagnosticValue === null ? "-" : `${Math.round(diagnosticValue)} ms`}
           />
           <Metric
             label="Intent matching"
-            value={moonshine ? `${moonshine.metrics.commandProcessingTimeMs.toFixed(2)} ms` : "-"}
+            value={result ? `${result.metrics.commandProcessingTimeMs.toFixed(2)} ms` : "-"}
           />
           <Metric
             label="Confidence"
-            value={moonshine ? `${Math.round(moonshine.intent.confidence * 100)}%` : "-"}
+            value={result ? `${Math.round(result.intent.confidence * 100)}%` : "-"}
           />
-          <Metric label="Matched phrase" value={moonshine?.intent.matchedPhrase ?? "-"} />
+          <Metric label="Matched phrase" value={result?.intent.matchedPhrase ?? "-"} />
         </div>
       </article>
-    </section>
   );
 }
 
